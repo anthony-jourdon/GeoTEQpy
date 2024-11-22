@@ -2,6 +2,89 @@ import numpy as np
 import netCDF4 as nc
 
 class Asagi:
+  """
+  Class to write and read data in the `ASAGI`_ format.
+  `ASAGI`_ uses the `netCDF4 <https://unidata.github.io/netcdf4-python/>`_ format.
+
+  :param np.ndarray x:
+    1D array of the x-coordinates. Shape ``(nx,)``.
+  :param np.ndarray y:
+    1D array of the y-coordinates. Shape ``(ny,)``.
+  :param np.ndarray z:
+    1D array of the z-coordinates. Shape ``(nz,)``.
+  :param dict fields:
+    Dictionary of the fields to write. 
+    The keys are the names of the fields and the values are the data arrays.
+    Data arrays must be of shape ``(nz,ny,nx)``.
+  :param str fname:
+    Name of the netCDF file to read.
+
+  :Attributes:
+
+  .. py:attribute:: x
+    :type: np.ndarray
+  
+    1D array of the x-coordinates. Shape ``(nx,)``. Default: ``None``.
+
+  .. py:attribute:: y
+    :type: np.ndarray
+
+    1D array of the y-coordinates. Shape ``(ny,)``. Default: ``None``.
+
+  .. py:attribute:: z
+    :type: np.ndarray
+      
+    1D array of the z-coordinates. Shape ``(nz,)``. Default: ``None``.
+  
+  .. py:attribute:: fields
+    :type: dict
+
+    Dictionary of the fields to write. 
+    The keys are the names of the fields and the values are the data arrays.
+    Data arrays must be of shape ``(nz,ny,nx)``. Default: ``None``.
+
+  .. py:attribute:: shape
+    :type: tuple
+
+    Shape of the data arrays. Default: ``None``, if a file is passed, the shape is set from the coordinates in the file.
+
+  .. py:attribute:: fname
+    :type: str
+
+    Name of the netCDF file to read. Default: ``None``.
+
+    
+  :Example:
+
+  Read data from a file, coordinates and fields are stored in the class attributes:
+
+  >>> asagi = Asagi(fname='test_netcdf.nc')
+
+  Create an instance of the class with coordinates and fields:
+
+  .. code:: python
+
+    O = np.array([0,-1,0],dtype=np.float32)
+    L = np.array([3,1,2],dtype=np.float32)
+    n = np.array([3,4,5],dtype=np.int32)
+    
+    cds = []
+    for i in range(3):
+      cds.append(np.linspace(O[i],L[i],n[i]))
+    
+    density = np.ones(shape=(n[2],n[1],n[0]), dtype=np.float32)*3000.0
+    fields = {"density": density}
+    asagi = Asagi(cds[0],cds[1],cds[2],fields)
+
+  Write the data to a netCDF file for `ASAGI`_:
+
+  >>> asagi.write_netcdf('test_asagi.nc')
+    
+  Write the data to a netCDF file for `ParaView <https://www.paraview.org/>`_:
+
+  >>> asagi.write_paraview('test_paraview.nc')
+
+  """
   def __init__(self,
                x:np.ndarray|None=None, 
                y:np.ndarray|None=None, 
@@ -44,17 +127,46 @@ class Asagi:
     return s
   
   def check_size(self,field:np.ndarray) -> bool:
+    """
+    Check if the given field has the same shape as the coordinates.
+
+    :param np.ndarray field:
+      Field to check.
+    :return:
+      ``True`` if the field has the same shape as the coordinates, ``False`` otherwise.
+    :rtype: bool
+    """
     if field.shape == self.shape:
       return True
     return False
 
   def get_fields_dtype(self) -> np.dtype:
+    """
+    Get the data type of the fields and store it in a numpy dtype object with the following format:
+    ``[ ("field1",dtype1), ("field2",dtype2), ... ]`` 
+    where ``"field1"`` are the keys of the :py:attr:`field <geoteqpy.MedialAxis.medial_axis>` dictionary 
+    and ``dtype1`` are the data type of the corresponding keys.
+
+    :return:
+      Numpy data type object.
+    :rtype: np.dtype
+    """
     data_type = []
     for key,value in self.fields.items():
       data_type.append((key,value.dtype))
     return np.dtype(data_type)
   
   def fields_to_tuple(self, dtype:np.dtype) -> np.ndarray:
+    """
+    Reshape the fields to a tuple of the given data type.
+  
+    :param np.dtype dtype:
+      Numpy data type object. 
+      Use the :py:meth:`get_fields_dtype <geoteqpy.Asagi.get_fields_dtype>` method to get the data type.
+    :return:
+      Numpy array of the reshaped fields.
+    :rtype: np.ndarray
+    """
     reshaped_fields = np.empty(shape=self.shape, dtype=dtype)
     for field in self.fields:
       if field in dtype.names:
@@ -62,6 +174,14 @@ class Asagi:
     return reshaped_fields
 
   def write_netcdf(self,fname:str,dimensions=('z','y','x')) -> None:
+    """
+    Write the data to a netCDF file for `ASAGI`_.
+
+    :param str fname:
+      Name of the netCDF file to write.
+    :param tuple dimensions:
+      Tuple of the dimensions names. Default is ``('z','y','x')``.
+    """
     fp = nc.Dataset(fname,'w',format='NETCDF4')
     dims = {0: {'name': 'x', 'size': self.x.shape[0], 'data': self.x},
             1: {'name': 'y', 'size': self.y.shape[0], 'data': self.y},
@@ -81,6 +201,12 @@ class Asagi:
     return
   
   def write_paraview(self,fname:str) -> None:
+    """
+    Write the data to a netCDF file for `ParaView <https://www.paraview.org/>`_.
+
+    :param str fname:
+      Name of the netCDF file to write.
+    """
     fp = nc.Dataset(fname,'w',format='NETCDF4')
     dims = {0: {'name': 'x', 'size': self.x.shape[0], 'data': self.x},
             1: {'name': 'y', 'size': self.y.shape[0], 'data': self.y},
@@ -99,6 +225,13 @@ class Asagi:
     return
   
   def read_netcdf(self,fname:str) -> None:
+    """
+    Read the data from a netCDF file.
+    Set the class attributes values from the read netCDF file.
+
+    :param str fname:
+      Name of the netCDF file to read.
+    """
     fp = nc.Dataset(fname,'r')
     self.x = fp.variables['x'][:]
     self.y = fp.variables['y'][:]

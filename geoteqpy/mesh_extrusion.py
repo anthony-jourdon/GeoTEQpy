@@ -17,6 +17,17 @@ class Extrusion:
     return
 
   def faces_indicators(self) -> dict:
+    """
+    Create a dictionnary with the following face informations:
+
+      - ``axis``: the axis of the face (x:0, y:1, z:2)
+      - ``node``: the node index of the face in its normal direction
+      - ``cell``: the cell index of the face in its normal direction
+      - ``scale``: ``+1`` if the face is a max face, ``-1`` if the face is a min face
+    
+    :return: dictionnary with face informations
+    :rtype: dict
+    """
     directions = ['x','y','z']
     limits     = ['min','max']
     faces = {}
@@ -43,6 +54,9 @@ class Extrusion:
     return faces
   
   def extrude_coordinates(self,ne:int,dx:float,face:str) -> list[np.ndarray]:
+    """
+    
+    """
     face_info = self.faces_info[face]
     axis      = face_info['axis']
     

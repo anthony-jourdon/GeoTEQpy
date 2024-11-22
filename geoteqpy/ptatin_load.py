@@ -3,6 +3,13 @@ import numpy as np
 import pyviztools as pvt
 
 class ModelData:
+  """
+  Class to read and manipulate data from a pTatin3d simulation.
+  It also provides methods to interpolate data from the pTatin3d mesh to a uniform mesh.
+
+  :param str vts:
+    Name of the vts file to read. Default: ``None``.
+  """
   def __init__(self,vts:str|None=None) -> None:
     self.ptatin_mesh:pvt.cfemesh.CFEMeshQ1|None  = None
     self.uniform_mesh:pvt.cfemesh.CFEMeshQ1|None = None
@@ -16,6 +23,11 @@ class ModelData:
     return
 
   def check_ptatin_mesh(self) -> None:
+    """
+    Verify that a mesh object has been created for the pTatin3d simulation results.
+
+    :raises ValueError: If the mesh object does not exist.
+    """
     if self.ptatin_mesh is None:
       serr = f'ptatin_mesh has not been created yet.\n'
       serr += f'Use {self.mesh_create_from_vts.__name__}() or {self.mesh_create_from_options.__name__}() first.'
@@ -23,18 +35,33 @@ class ModelData:
     return
 
   def set_default_fields(self) -> list[str]:
+    """
+    Set default fields to interpolate from the pTatin3d mesh to the uniform mesh.
+    By default, all cell and point fields are considered.
+
+    :return: List of keys corresponding to fields to interpolate.
+    :rtype: list[str]
+    """
     fields = list(self.ptatin_mesh.cell_data.keys())
     fields.extend(list(self.ptatin_mesh.point_data.keys()))
     return fields
 
   def mesh_create_from_vts(self, fname:str) -> pvt.cfemesh.CFEMeshQ1:
+    """
+    Create a :py:class:`pyviztools.CFEMeshQ1` object from a vts file.
+
+    :param str fname: Name of the vts file to read.
+
+    :return: Mesh object.
+    :rtype: :py:class:`pyviztools.CFEMeshQ1`
+    """
     pv_mesh:pvs.StructuredGrid = pvs.read(fname)
     # get bounding box
     self.O  = np.array([ pv_mesh.bounds[0], pv_mesh.bounds[2], pv_mesh.bounds[4] ], dtype=np.float32)
     self.L  = np.array([ pv_mesh.bounds[1], pv_mesh.bounds[3], pv_mesh.bounds[5] ], dtype=np.float32)
     size    = np.asarray(pv_mesh.dimensions)
     
-    # create mesh object
+    # create finite element mesh object
     mesh = pvt.cfemesh.CFEMeshQ1(3,size[0]-1,size[1]-1,size[2]-1)
     # attach coords
     mesh.coor = pv_mesh.points
@@ -52,6 +79,29 @@ class ModelData:
     return mesh
   
   def mesh_create_from_options(self, O:np.ndarray, L:np.ndarray, m:np.ndarray) -> pvt.cfemesh.CFEMeshQ1:
+    """
+    Create a :py:class:`pyviztools.CFEMeshQ1` object from a bounding box and mesh size.
+
+    :param np.ndarray O: Minimum coordinates of the domain in each direction.
+    :param np.ndarray L: Maximum coordinates of the domain in each direction.
+    :param np.ndarray m: Number of elements in each direction.
+
+    :return: Mesh object.
+    :rtype: :py:class:`pyviztools.CFEMeshQ1`
+
+    :Example:
+
+    .. code:: python
+
+      import numpy as np
+      
+      O = np.array([0,0,0], dtype=np.float32)
+      L = np.array([1,1,1], dtype=np.float32)
+      m = np.array([8,8,8], dtype=np.int32)
+
+      M = ModelData()
+      mesh = M.mesh_create_from_options(O,L,m)
+    """
     # create mesh object
     mesh = pvt.cfemesh.CFEMeshQ1(3,m[0],m[1],m[2])
     # create coords
@@ -66,6 +116,28 @@ class ModelData:
     raise NotImplementedError(f'Method {self.mesh_create_from_petscvec.__name__} not implemented yet')
 
   def get_strainrate(self,**keys) -> np.ndarray:
+    """
+    Get strain rate from its key in the cell data of the pTatin3d mesh or compute it from the velocity field such that:
+
+    .. math::
+
+      \\dot{\\varepsilon}_{ij} = \\frac{1}{2} \\left( \\frac{\\partial u_i}{\\partial x_j} + \\frac{\\partial u_j}{\\partial x_i} \\right)
+
+    where :math:`\\dot{\\varepsilon}_{ij}` is the strain rate tensor and :math:`u_i` is the velocity vector.
+    
+    :param dict keys: Dictionary of keys to identify the strain rate field and the velocity field.
+      
+      - ``strainrate_key`` (str): Key to identify the strain rate field in the cell data.
+      - ``velocity_key`` (str): Key to identify the velocity field in the point data.
+    
+    The velocity field is mandatory only if the strain rate field is not found in the cell data.
+    If the strain rate key is not provided or not found in the data it will be computed from the velocity field.
+
+    :raises ValueError: If both the strain rate and the velocity field are not found or provided.
+
+    :return: Strain rate field. Shape ``(n_cells,9)``.
+    :rtype: np.ndarray
+    """
     self.check_ptatin_mesh()
     strainrate_key:str = keys.get('strainrate_key',None)
     velocity_key:str   = keys.get('velocity_key',None)
@@ -80,6 +152,31 @@ class ModelData:
     return strain_rate
 
   def get_deviatoric_stress(self,**keys):
+    """
+    Get deviatoric stress from its key in the cell data of the pTatin3d mesh 
+    or compute it from the viscosity and strain rate fields such that:
+
+    .. math::
+
+      \\tau_{ij} = 2 \\eta \\dot{\\varepsilon}_{ij}
+    
+    where :math:`\\tau_{ij}` is the deviatoric stress tensor, :math:`\\eta` is the viscosity and :math:`\\dot{\\varepsilon}_{ij}` is the strain rate tensor.
+
+    :param dict keys: Dictionary of keys: 
+      
+      - ``deviatoric_stress_key`` (str): Key to identify the deviatoric stress field in the cell data.
+      - ``viscosity_key`` (str): Key to identify the viscosity field in the cell data.
+      - ``strainrate_key`` (str): Key to identify the strain rate field in the cell data.
+      - ``velocity_key`` (str): Key to identify the velocity field in the point data.
+    
+    If ``deviatoric_stress_key`` is provided and found in data, the deviatoric stress field is returned and no other 
+    field key is required. If not found, the deviatoric stress field is computed from the viscosity and strain rate fields.
+    If the strain rate field is not found, it will be computed from the velocity field using the method :py:meth:`get_strainrate <geoteqpy.ModelData.get_strainrate>`. 
+    Therefore, the only two mandatory fields are the viscosity and the velocity fields.
+
+    :return: Deviatoric stress field. Shape ``(n_cells,9)``.
+    :rtype: np.ndarray
+    """
     self.check_ptatin_mesh()
     dev_stress_key:str = keys.get('deviatoric_stress_key',None)
     viscosity_key:str  = keys.get('viscosity_key',None)
@@ -95,6 +192,32 @@ class ModelData:
     return deviatoric_stress
 
   def get_total_stress(self,**keys):
+    """
+    Get the total stress field from its key or compute it from the deviatoric stress and the pressure fields such that:
+
+    .. math::
+
+      \\sigma_{ij} = \\tau_{ij} - p \\delta_{ij}
+
+    where :math:`\\tau_{ij}` is the deviatoric stress tensor, :math:`p` is the pressure and :math:`\\delta_{ij}` is the Kronecker delta.
+    
+    :param dict keys: Dictionary of keys:
+
+      - ``total_stress_key`` (str): Key to identify the total stress field in the cell data.
+      - ``deviatoric_stress_key`` (str): Key to identify the deviatoric stress field in the cell data.
+      - ``viscosity_key`` (str): Key to identify the viscosity field in the cell data.
+      - ``strainrate_key`` (str): Key to identify the strain rate field in the cell data.
+      - ``velocity_key`` (str): Key to identify the velocity field in the point data.
+      - ``pressure_key`` (str): Key to identify the pressure field in the cell data.
+
+      
+    If the total stress field is not found in the cell data, it will be computed from 
+    the deviatoric stress using the method :py:meth:`get_deviatoric_stress <geoteqpy.ModelData.get_deviatoric_stress>` 
+    and the pressure fields. See :py:meth:`get_deviatoric_stress <geoteqpy.ModelData.get_deviatoric_stress>` for more details.
+
+    :return: Total stress field. Shape ``(n_cells,9)``.
+    :rtype: np.ndarray
+    """
     self.check_ptatin_mesh()
     total_stress_key:str = keys.get('total_stress_key',None)
     dev_stress_key:str   = keys.get('deviatoric_stress_key',None)
@@ -128,6 +251,20 @@ class ModelData:
     return total_stress
 
   def interpolate_to_uniform_mesh(self,fields:list|None=None) -> None:
+    """
+    Interpolate fields from the pTatin3d mesh created with
+    :py:meth:`mesh_create_from_vts <geoteqpy.ModelData.mesh_create_from_vts>` to a uniform mesh created with
+    :py:meth:`mesh_create_from_options <geoteqpy.ModelData.mesh_create_from_options>`.
+
+    .. warning:: During the interpolation, all cell fields are projected to point fields.
+
+    .. note:: Interpolation is linear and uses :math:`Q_1` isoparametric element shape functions.
+
+    :param list fields: List of keys corresponding to fields to interpolate. Default: ``None``.
+        If no fields are provided, all cell and point fields present on the ptatin mesh object are considered.
+
+    :raises ValueError: If the uniform mesh has not been created yet.
+    """
     self.check_ptatin_mesh()
     if self.uniform_mesh is None:
       serr = f'Error: {self.uniform_mesh} has not been created yet.\n'

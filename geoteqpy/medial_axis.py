@@ -6,6 +6,56 @@ from pyviztools import CFEMeshQ1
 from time import perf_counter
 
 class MedialAxis:
+  """
+  Class to compute the medial axis of a 3-dimensional shape.
+  The medial axis is a set of points located at the centre of the shape.
+  Medial axis is computed using the algorithm described in the paper:
+
+    - Ma, J., Bae, S.W., Choi, S. (2019). 3D medial axis point approximation using nearest neighbors and the normal field. 
+      Computer-Aided Design, 114, 1-11. 
+      https://doi.org/10.1016/j.cad.2019.05.002
+
+  :param pyvista.UnstructuredGrid mesh:
+    Mesh of the shape for which the medial axis is computed.
+  :param float radius_ma:
+    Radius of research for the medial axis.
+  :param float radius_cov:
+    Radius of research for the covariance matrix.
+
+  :Attributes:
+
+  .. py:attribute:: medial_axis
+    :type: pyvista.PolyData
+
+    Pyvista mesh object of the medial axis points.
+    
+  .. py:attribute:: radius_ma
+    :type: float
+
+    Radius of research for the medial axis.
+
+  .. py:attribute:: radius_cov
+    :type: float
+
+    Radius of research for the covariance matrix.
+
+  :Example:
+
+  .. code:: python
+
+    import pyvista as pvs
+    import geoteqpy as gte
+
+    # Load a mesh
+    mesh = pvs.read("path/to/mesh.vtu")
+    # Create a MedialAxis object
+    ma = gte.MedialAxis(mesh=mesh,radius_ma=0.5,radius_cov=1.0)
+    # Compute the medial axis and the orientation vectors
+    medial_axis = ma.get_medial_axis_mesh()
+
+  :Methods:
+
+  """
   def __init__(self,mesh:pvs.UnstructuredGrid,radius_ma:float,radius_cov:float) -> None:
     self.mesh        = mesh
     self.radius_ma   = radius_ma
@@ -14,6 +64,17 @@ class MedialAxis:
     return
   
   def get_medial_axis_mesh(self,get_eigv:bool=True) -> pvs.PolyData:
+    """
+    Get the medial axis mesh.
+
+    :param bool get_eigv:
+      If ``True``, the orientation vectors are computed and added to the mesh.
+      Default is ``True``.
+
+    :return:
+      Pyvista mesh object of the medial axis points.
+    :rtype: pyvista.PolyData
+    """
     if self.medial_axis is None:
       self.compute_medial_axis()
     if get_eigv:
@@ -21,6 +82,10 @@ class MedialAxis:
     return self.medial_axis
 
   def compute_medial_axis(self) -> pvs.PolyData:
+    """
+    Compute the medial axis of the shape.
+    Attach the result to the class attribute :py:attr:`medial_axis <geoteqpy.MedialAxis.medial_axis>`. 
+    """
     # get points coordinates
     points = self.mesh.points
     # get points normals
@@ -60,7 +125,19 @@ class MedialAxis:
     self.medial_axis = pvs.PolyData(medial_axis)
     return
   
-  def compute_covariance_eigv(self):
+  def compute_covariance_eigv(self) -> np.ndarray:
+    """
+    Compute the covariance matrix and its eigen vectors for each point of the medial axis.
+
+    :return:
+      Array of the eigen vectors for each point of the medial axis.
+      Shape is ``(npoints, 3, 3)`` where npoints is the number of points in the medial axis,
+
+      - ``[:,0,:]`` is the first eigen vector, 
+      - ``[:,1,:]`` is the second eigen vector and 
+      - ``[:,2,:]`` is the third eigen vector.
+    :rtype: np.ndarray
+    """
     if self.medial_axis is None:
       self.compute_medial_axis()
     t0 = perf_counter()
@@ -113,6 +190,11 @@ class MedialAxis:
     return e_vectors
 
   def get_orientation_vectors(self):
+    """
+    Register the eigen vectors of the covariance matrix on the 
+    :py:attr:`medial_axis <geoteqpy.MedialAxis.medial_axis>` mesh 
+    if they are not already present.
+    """
     keys = list(self.medial_axis.point_data.keys())
     keys.extend(self.medial_axis.cell_data.keys())
     # check if the orientation vectors are already on the mesh
