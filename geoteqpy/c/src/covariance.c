@@ -21,7 +21,7 @@
 ====================================================================================================
 */
 #include <stdio.h>
-#include <faulttools.h>
+#include "faulttools.h"
 
 static void get_mean(long int npoints, int ndim, double data[], double x_bar[])
 {

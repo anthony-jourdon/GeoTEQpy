@@ -21,7 +21,7 @@
 ====================================================================================================
 */
 
-#include <faulttools.h>
+#include "faulttools.h"
 
 #define SQR(x)      ((x)*(x))                        // x^2
 #define SQR_ABS(x)  (SQR(creal(x)) + SQR(cimag(x)))  // |x|^2

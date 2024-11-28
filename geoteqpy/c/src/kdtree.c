@@ -63,7 +63,7 @@
 #include <string.h>
 #include <math.h>
 
-#include <kdtree.h>
+#include "kdtree.h"
 
 /* private prototypes */
 static inline double kdtr_dist(kd_node a, kd_node b, int dim);
