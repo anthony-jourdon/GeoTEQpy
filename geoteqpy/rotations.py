@@ -1,6 +1,27 @@
 import numpy as np
 
 class Rotation:
+  """
+  Class to perform 3D rotations.
+
+  :param float angle: Angle of rotation
+  :param numpy.ndarray axis: Axis of rotation, expected shape ``(3,)``. The vector is expected to be **normalized**.
+  
+  :Attributes:
+
+  .. py:attribute:: angle
+    :type: float
+
+    Angle of rotation
+
+  .. py:attribute:: axis
+    :type: numpy.ndarray
+
+    Axis of rotation
+
+  :Methods:
+  
+  """
   def __init__(self,angle:float,axis:np.ndarray) -> None:
     self.angle = angle
     self.axis  = axis
@@ -8,15 +29,10 @@ class Rotation:
 
   def rotation_matrix(self) -> np.ndarray:
     """
-    rotation_matrix(theta, r)
-    Construct the 3D rotation matrix for an angle theta and a rotation axis r
-
-    Parameters:
-      theta: angle of rotation in radians
-      r:     axis of rotation. A 3D unit vector is expected (i.e., ||r|| = 1).
-
-    Output:
-      R: the 3D rotation matrix of the shape (3,3) 
+    Construct the 3D rotation matrix for an angle :math:`\\theta` and a rotation axis :math:`\\mathbf r`.
+    
+    :return: The rotation matrix. Shape ``(3,3)``
+    :ret type: numpy.ndarray
     """
     theta = self.angle
     r     = self.axis
@@ -31,22 +47,19 @@ class Rotation:
                     np.cos(theta)+(1.0-np.cos(theta))*r[2]**2]])
     return R
   
-  def rotate_vector(self,R:np.ndarray,u:np.ndarray,ccw:bool=True):
+  def rotate_vector(self,R:np.ndarray,u:np.ndarray,ccw:bool=True) -> np.ndarray:
     """
-    rotate_vector(self,R,u,ccw=True)
     Rotate vector(s) :math:`\\mathbf u` given the rotation matrix :math:`\\boldsymbol R`.
 
     .. warning:: 
 
       This is **not** a rotation of the vector field, but a rotation of the vectors themselves.
-      To rotate the vector field, have a look at how it is done in
-      :py:meth:`evaluate_velocity_symbolic() <genepy.VelocityLinear.evaluate_velocity_symbolic>`.
 
     :param np.ndarray R: rotation matrix of the shape ``(dim,dim)``
     :param np.ndarray u: vector(s) to be rotated of the shape ``(npoints,dim)``
     :param bool ccw: rotate counter-clockwise (default is True)
 
-    :return: **u_R** rotated vector(s) of the shape ``(npoints,dim)``
+    :return: Rotated vector of the shape ``(npoints,dim)``
     """
     # u is expected to be in the form (npoints,dim)
     if ccw: # rotate couter-clockwise
@@ -56,6 +69,19 @@ class Rotation:
     return u_R
   
   def rotate_tensor(self,R:np.ndarray,tensor:np.ndarray,ccw:bool=True) -> np.ndarray:
+    """
+    Rotate a tensor such that
+
+    .. math::
+
+      \\boldsymbol{\\tau}_R = \\boldsymbol{R} \\boldsymbol{\\tau} \\boldsymbol{R}^T
+
+    :param np.ndarray R: rotation matrix of the shape ``(dim,dim)``
+    :param np.ndarray tensor: tensor(s) to be rotated of the shape ``(npoints,dim,dim)``
+    :param bool ccw: rotate counter-clockwise (default is True)
+
+    :return: Rotated tensor of the shape ``(npoints,dim,dim)``
+    """
     if tensor.ndim != 3:
       raise ValueError(f"Expected tensor to be of shape (npoints,3,3), found: {tensor.shape}")
     if ccw:
@@ -64,7 +90,7 @@ class Rotation:
       tensor_r = (np.matmul(R,(np.matmul(tensor,R.T)).T)).T
     return tensor_r
 
-  def rotate_referential(self,coor:np.ndarray,O:np.ndarray,L:np.ndarray,ccw:bool=True):
+  def rotate_referential(self,coor:np.ndarray,O:np.ndarray,L:np.ndarray,ccw:bool=True) -> np.ndarray:
     """
     rotate_referential(self,coor,O,L,ccw=True)
     Rotate the referential of the coordinates :math:`\\mathbf{x}` given the rotation matrix :math:`\\boldsymbol R`.
@@ -80,7 +106,7 @@ class Rotation:
     :param np.ndarray L: maximum coordinates of the referential of the shape ``(dim,)``
     :param bool ccw: rotate counter-clockwise (default is True)
 
-    :return: **coorR** rotated coordinates of the shape ``(npoints,dim)``
+    :return: Rotated coordinates of the shape ``(npoints,dim)``
     """
     # coor is expected to be in the form (npoints,dim)
     # get the rotation matrix

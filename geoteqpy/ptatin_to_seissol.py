@@ -5,6 +5,44 @@ import geoteqpy.field_utils as gtfu
 import numpy as np
 
 class pTatin2SeisSol:
+  """
+  Class to shape and export fields from pTatin to SeisSol using the format required by `ASAGI`_.
+
+  :param ModelData model: instance of the class :py:class:`ModelData <geoteqpy.ModelData>`.
+  :param numpy.ndarray uniform_mesh_size: 1D array of the size of the uniform mesh. Shape ``(3,)``.
+  :param dict fields_key: fields keys to export.
+
+  :Attributes:
+
+  .. py:attribute:: model
+    :type: ModelData
+
+    Instance of the class :py:class:`ModelData <geoteqpy.ModelData>`.
+
+  .. py:attribute:: fields_key
+    :type: dict
+
+    Dictionary of the fields keys to export. The keys are the names of the fields and the values are the keys in the model's point data.
+    Default: ``None``.
+
+  .. py:attribute:: rotation
+    :type: Rotation
+
+    Instance of the class :py:class:`Rotation <geoteqpy.rotations.Rotation>`. Default: ``None``.
+
+  .. py:attribute:: R
+    :type: np.ndarray
+
+    Rotation matrix constructed with the method :py:meth:`rotation_matrix <geoteqpy.Rotation.rotation_matrix>`.
+
+  .. py:attribute:: size
+    :type: np.ndarray
+
+    1D array of the size of the uniform mesh. Shape ``(3,)``.
+
+  :Methods:
+  
+  """
   def __init__(self,model:ModelData,uniform_mesh_size:np.ndarray,**fields_key) -> None:
     self.model      = model
     self.fields_key = fields_key
@@ -16,10 +54,27 @@ class pTatin2SeisSol:
     return
   
   def uniform_reshape(self,field):
+    """
+    Reshape field to the uniform mesh size ``(mz+1,my+1,mx+1)`` for `ASAGI`_ 
+    and swap axes to intervert the :math:`y` and :math:`z` directions for `SeisSol`_.
+
+    :param np.ndarray field: 1D array of the field to reshape. Shape ``(nx*ny*nz,)``.
+
+    :return: 3D array of the field. Shape ``(mz+1,my+1,mx+1)``.
+    :rtype: np.ndarray
+    """
     # reshape for asagi, note the swapaxes to intervert y and z
     return np.reshape(field,newshape=(self.size[2]+1,self.size[1]+1,self.size[0]+1)).swapaxes(0,1)
 
   def get_1d_coordinates(self,coor):
+    """
+    Extract the 1D coordinates from the uniform coordinates.
+
+    :param np.ndarray coor: Array of the coordinates. Shape ``(npoints,3)``.
+
+    :return: 1D arrays of the coordinates. Ordered as :math:`x`, :math:`y`, :math:`z`.
+    :rtype: tuple[np.ndarray,np.ndarray,np.ndarray]
+    """
     x = self.uniform_reshape(coor[:,0])
     y = self.uniform_reshape(coor[:,1])
     z = self.uniform_reshape(coor[:,2])
@@ -29,7 +84,17 @@ class pTatin2SeisSol:
     z_1d = z[:,0,0]
     return x_1d,y_1d,z_1d
 
-  def rotate_stress(self,stress:np.ndarray):
+  def rotate_stress(self,stress:np.ndarray) -> np.ndarray:
+    """
+    Rotate stress tensor from coordinate system where :math:`y` is the vertical direction to a coordinate system
+    where :math:`z` is the vertical direction. 
+    Uses the method :py:meth:`rotate_tensor <geoteqpy.Rotation.rotate_tensor>`.
+
+    :param numpy.ndarray stress: Stress tensor to rotate.
+
+    :return: The rotated stress tensor.
+    :rtype: numpy.ndarray
+    """
     # shape for rotation
     stress = np.reshape(stress,(stress.shape[0],3,3))
     rotated_stress = self.rotation.rotate_tensor(R=self.R,tensor=stress)
@@ -38,6 +103,27 @@ class pTatin2SeisSol:
     return rotated_stress
   
   def export_to_asagi(self,fname,fields_to_export:list[str]|None=None,pvoutput:str|None=None):
+    """
+    Export the required fields to the `ASAGI`_ format for `SeisSol`_.
+
+    :param str fname: The filename to which the data will be exported.
+    :param list[str] fields_to_export: A list of field names to export. If None, all fields specified in the class constructor will be exported.
+    :param str pvoutput: The filename for ParaView output. If None, no ParaView output will be generated.
+
+    .. note::
+        This method performs the following steps:
+        
+        1. Creates a uniform mesh based on the model's origin (O) and dimensions (L).
+        2. Computes the total stress and stores it in the model's cell data.
+        3. Interpolates the specified fields from the ptatin mesh to the newly created uniform mesh.
+        4. Removes any NaN values introduced during interpolation.
+        5. Rotates the fields that require rotation based on the model's referential.
+    
+    .. note:: 
+
+      The 6 components of the stress tensor are exported using the following keys: 
+      ``"s_xx"``, ``"s_yy"``, ``"s_zz"``, ``"s_xy"``, ``"s_xz"``, and ``"s_yz"``.
+    """
     # 1: we create the uniform mesh
     self.model.uniform_mesh = self.model.mesh_create_from_options(self.model.O,self.model.L,self.size)
     # 2: we compute stress

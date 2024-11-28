@@ -9,6 +9,30 @@ class ModelData:
 
   :param str vts:
     Name of the vts file to read. Default: ``None``.
+
+  :Attributes:
+
+  .. py:attribute:: ptatin_mesh
+    :type: pvt.cfemesh.CFEMeshQ1
+
+    pTatin3d mesh object. Default: ``None``.
+
+  .. py:attribute:: uniform_mesh
+    :type: pvt.cfemesh.CFEMeshQ1
+
+    Uniform mesh object. Default: ``None``.
+
+  .. py:attribute:: O
+    :type: np.ndarray
+
+    Minimum coordinates of the domain in each direction. Default: ``None``.
+
+  .. py:attribute:: L
+    :type: np.ndarray
+
+    Maximum coordinates of the domain in each direction. Default: ``None``.
+  
+  :Methods:
   """
   def __init__(self,vts:str|None=None) -> None:
     self.ptatin_mesh:pvt.cfemesh.CFEMeshQ1|None  = None
