@@ -7,10 +7,20 @@ import shutil
 class CustomBuildExtCommand(build_ext):
     """Custom build_ext command to run `make all`."""
     def run(self):
-        # Run the original build_ext command
+       # Run the original build_ext command
         build_ext.run(self)
-        # Run `make all` to compile the C files
-        subprocess.check_call(['make', 'all'], cwd='geoteqpy/c')
+        # Check for available compilers
+        compilers = ['clang', 'gcc', 'icc', 'cc']
+        compiler  = None
+        for comp in compilers:
+            if shutil.which(comp):
+                compiler = comp
+                break
+        if compiler is None:
+            raise RuntimeError("No suitable compiler found. Looked for: "+", ".join(compilers))
+        
+        # Run make all to compile the C files with the selected compiler
+        subprocess.check_call(['make', 'all', f'CC={compiler}'], cwd='geoteqpy/c')
         # Verify that the shared library was created
         source_path = os.path.join('geoteqpy', 'c', 'lib', 'faulttools.so')
         if not os.path.exists(source_path):

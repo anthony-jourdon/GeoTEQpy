@@ -1,5 +1,4 @@
 
-CC = gcc
 CFLAGS = -fPIC -Wall -O2 -march=native
 #CFLAGS = -fPIC -Wall -O0
 LIBS = -lm
