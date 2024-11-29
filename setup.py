@@ -1,39 +1,5 @@
-from setuptools import setup, find_packages, Extension
-from setuptools.command.build_ext import build_ext
-import subprocess
 import os
-import shutil
-
-class CustomBuildExtCommand(build_ext):
-    """Custom build_ext command to run `make all`."""
-    def run(self):
-       # Run the original build_ext command
-        build_ext.run(self)
-        # Check for available compilers
-        compilers = ['clang', 'gcc', 'icc', 'cc']
-        compiler  = None
-        for comp in compilers:
-            if shutil.which(comp):
-                compiler = comp
-                break
-        if compiler is None:
-            raise RuntimeError("No suitable compiler found. Looked for: "+", ".join(compilers))
-        
-        # Run make all to compile the C files with the selected compiler
-        subprocess.check_call(['make', 'all', f'CC={compiler}'], cwd='geoteqpy/c')
-        # Verify that the shared library was created
-        source_path = os.path.join('geoteqpy', 'c', 'lib', 'faulttools.so')
-        if not os.path.exists(source_path):
-            raise FileNotFoundError(f"Expected shared library not found: {source_path}")
-        # Move the compiled shared library to the desired location
-        build_lib = self.build_lib
-        target_dir = os.path.join(build_lib, 'geoteqpy', 'c', 'lib')
-        os.makedirs(target_dir, exist_ok=True)
-        destination_path = os.path.join(target_dir, 'faulttools.so')
-        if os.path.exists(destination_path):
-            os.remove(destination_path)
-        shutil.move(source_path, destination_path)
-        print(f"Moved {source_path} to {destination_path}")
+from setuptools import setup, find_packages, Extension
 
 # Generate the list of source files automatically
 src_dir = 'geoteqpy/c/src'
@@ -41,18 +7,19 @@ sources = [os.path.join(src_dir, f) for f in os.listdir(src_dir) if f.endswith('
 
 # Define the extension module
 extension = Extension(
-    name='geoteqpy.c.faulttools',  # Name of the extension
+    name='geoteqpy.c.lib.faulttools',  # Name of the extension
     sources=sources, # Source files  
-    include_dirs=[],  # Include directories
-    libraries=[],  # Libraries to link against
+    include_dirs=['geoteqpy/c/src'],  # Include directories
+    libraries=['m'],  # Libraries to link against
     library_dirs=[],  # Directories to search for libraries
-    extra_compile_args=[],  # Extra arguments to pass to the compiler
-    extra_link_args=[]  # Extra arguments to pass to the linker
+    extra_compile_args=['-march=native'],  # Extra arguments to pass to the compiler
+    extra_link_args=['-shared', '-fPIC']  # Extra arguments to pass to the linker
 )
 
 setup(
     name='geoteqpy',
     version='1.0.0',
+    ext_modules=[extension],
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -67,10 +34,6 @@ setup(
             # Define command-line scripts here
         ],
     },
-    cmdclass={
-        'build_ext': CustomBuildExtCommand,
-    },
-    ext_modules=[extension],
     author='Anthony Jourdon',
     author_email='',
     description='Python package to extrude structured mesh, compute the medial axis of a 3D shape and export data from long-term geodynamic models to ASAGI using NetCDF.',

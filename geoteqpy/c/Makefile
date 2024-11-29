@@ -1,16 +1,16 @@
-
+CC=gcc
 CFLAGS = -fPIC -Wall -O2 -march=native
 #CFLAGS = -fPIC -Wall -O0
 LIBS = -lm
 LD_FLAGS = -shared -fPIC
 
-SRC = 	src/cov_eigen_v.c \
-        src/eigen_v.c \
-        src/covariance.c \
+SRC =  src/cov_eigen_v.c \
+	src/eigen_v.c \
+	src/covariance.c \
 	src/cov_eigen_v_mesh.c \
 	src/kdtree.c \
 	src/compute_medial_axis.c \
-	src/dc_patches.c \
+	src/dc_patches.c
 
 HDR = 	src/ft_constants.h src/faulttools.h src/SortPCtx.h src/kdtree.h
 

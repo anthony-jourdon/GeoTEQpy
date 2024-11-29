@@ -6,7 +6,12 @@ def load_clib():
   
   vt_module_path = os.path.dirname(os.path.abspath(__file__))
   c_library_path = os.path.join(vt_module_path, "c", "lib")
-  c_library_name = os.path.join(c_library_path, "faulttools.so")
+  lib_name = "faulttools.so"
+  for file in os.listdir(c_library_path):
+    if file.startswith("faulttools"):
+      lib_name = file
+      break
+  c_library_name = os.path.join(c_library_path, lib_name)
 
   clib = None
   libpath = os.path.dirname(c_library_name)
