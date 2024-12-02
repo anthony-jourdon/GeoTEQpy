@@ -68,4 +68,4 @@ The documentation can be built and accessed locally (no internet connection requ
 sphinx-build -M html docs/source/ docs/build/
 ```
 However, this requires the Python package [sphinx](https://www.sphinx-doc.org/en/master/index.html).
-An online documentation will be made available soon.
+An online documentation is available at this [link](https://geoteqpy.readthedocs.io/en/latest/).
