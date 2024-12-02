@@ -3,23 +3,24 @@
   Copyright (c) 2024, 
   Anthony Jourdon, 
 
-  project:  ptatin3d-extract-faults-tools
+  project:  GeoTEQpy
   filename: cov_eigen_v.c
 
-  This file is part of ptatin3d-extract-faults-tools.
+  This file is part of GeoTEQpy.
 
-  ptatin3d-extract-faults-tools is free software: you can redistribute it and/or modify it under the terms 
+  GeoTEQpy is free software: you can redistribute it and/or modify it under the terms 
   of the GNU General Public License as published by the Free Software Foundation, either 
   version 3 of the License, or any later version.
 
-  ptatin3d-extract-faults-tools is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+  GeoTEQpy is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
   See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with ptatin3d-extract-faults-tools. 
+  You should have received a copy of the GNU General Public License along with GeoTEQpy. 
   If not, see <https://www.gnu.org/licenses/>.
 ====================================================================================================
 */
+
 #include <stdio.h>
 #include "faulttools.h"
 
