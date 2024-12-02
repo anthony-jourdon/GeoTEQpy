@@ -1,3 +1,24 @@
+#====================================================================================================
+#  Copyright (c) 2024, 
+#  Anthony Jourdon, 
+#
+#  project:  GeoTEQpy
+#  filename: get_medial_axis.py
+#
+#  This file is part of GeoTEQpy.
+#
+#  GeoTEQpy is free software: you can redistribute it and/or modify it under the terms 
+#  of the GNU General Public License as published by the Free Software Foundation, either 
+#  version 3 of the License, or any later version.
+#
+#  GeoTEQpy is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+#  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+#  See the GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along with GeoTEQpy. 
+#  If not, see <https://www.gnu.org/licenses/>.
+#====================================================================================================
+
 import yaml
 import argparse
 import pyvista as pvs
