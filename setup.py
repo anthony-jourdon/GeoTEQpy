@@ -48,6 +48,7 @@ setup(
         "numpy",
         "pyvista",
         "netCDF4",
+        "pyyaml",
         "ptatin3d-pyviztools @ git+https://bitbucket.org/ptatin/ptatin3d-pyviztools.git@anthony_jourdon/post-proc-script",
     ],
     entry_points={
