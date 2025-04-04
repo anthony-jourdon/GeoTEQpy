@@ -19,25 +19,25 @@
 #  If not, see <https://www.gnu.org/licenses/>.
 #====================================================================================================
 
+import os
 import yaml
 import argparse 
 import pyvista as pvs
 import geoteqpy as gte
 
 def extrusion(
-    vts_file:str,
-    output:str,
+    mesh:pvs.StructuredGrid,
     extrusion_params:dict,
     fields:list[str]|None=None,
-    e2_key:str|None=None) -> None:
+    e2_key:str|None=None) -> pvs.StructuredGrid:
   
-  mesh = pvs.read(vts_file)
   if e2_key is not None:
-    gte.compute_xi(mesh,e2_key)
+    gte.compute_xi(mesh,field_name="xi",e2_key=e2_key)
     if fields is not None:
-      fields.append("xi")
+      if "xi" not in fields:
+        fields.append("xi")
     else:
-      fields = ["xi"]
+      fields = [e2_key,"xi"]
 
   for face in extrusion_params:
     extrusion = gte.Extrusion(mesh=mesh)
@@ -47,8 +47,7 @@ def extrusion(
       str(face["name"]),
       fields=fields
     )
-  mesh.save(output)
-  return
+  return mesh
 
 def main():
 
@@ -59,7 +58,7 @@ def main():
   help_str += 'The yaml file should contain the following keys:\n'
   help_str += '  model:\n'
   help_str += '    file: path to the vts file containing ptatin model data\n'
-  help_str += '    output: path to the output vtu file\n'
+  help_str += '    output: (optional) path to the output vtu file\n'
   help_str += '    e2_key: (optional) key for the e2 field\n'
   help_str += '    fields: (optional) list of fields to extrude, if e2_key is provided at least \"xi\" field will be extruded\n'
   help_str += '  extrusion: \n'
@@ -74,13 +73,23 @@ def main():
   with open(yaml_file,'r') as f:
     data = yaml.load(f,Loader=yaml.FullLoader)
   
-  extrusion(
-    data['model']['file'],
-    data['model']['output'],
+  mesh_input = pvs.read(data['model']['file'])
+  # extrude mesh
+  mesh = extrusion(
+    mesh_input,
     data['extrusion'],
     fields=data['model'].get('fields',None),
     e2_key=data['model'].get('e2_key',None)
   )
+
+  if "output" in data['model']:
+    output_dir = data['model']['output']
+  else:
+    output_dir = os.path.dirname(data['model']['file'])
+  
+  # extract the file name without the path
+  file_basename = os.path.basename(data['model']['file'])
+  mesh.save(os.path.join(output_dir,gte.replace_extension(file_basename,"-extruded.vts")))
   return
 
 if __name__ == "__main__":
