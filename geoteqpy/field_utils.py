@@ -71,8 +71,8 @@ def symtensor_get_unique_components(tensor:np.ndarray) -> np.ndarray:
   """
   return tensor[:,[0,4,8,1,2,5]]
 
-def compute_xi(mesh:pvs.StructuredGrid,e2_key:str,field_name:str="xi") -> None:
-  mesh[field_name] = np.exp( np.log10(mesh[e2_key]) - np.min( np.log10(mesh[e2_key]) ) )
+def compute_xi(mesh:pvs.StructuredGrid,field_name:str="xi",e2_key:str="e2") -> None:
+  mesh[field_name] = ( np.log10(mesh[e2_key]) - np.min( np.log10(mesh[e2_key]) ) ) / ( np.max( np.log10(mesh[e2_key]) ) - np.min( np.log10(mesh[e2_key]) ) )
   return
 
 def replace_extension(fname:str,new_extension:str) -> str:
