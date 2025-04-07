@@ -74,8 +74,7 @@ def main():
     # extract the file name without the path
     file_basename = os.path.basename(data['model']['file'])
     # output directory, use the one provided or the directory in which the model file is otherwise
-    if "output" in data['model']: output_dir = data['model']['output']
-    else:                         output_dir = os.path.dirname(data['model']['file'])
+    output_dir = data["model"].get("output",os.path.dirname(data["model"]["file"]))
     # extract the contour mesh from the model
     contour_mesh = generate_contour_mesh(data,file_basename,output_dir)
     output = gte.replace_extension(os.path.join(output_dir,file_basename),"-contour.vtk")
