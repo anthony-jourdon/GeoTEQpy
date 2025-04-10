@@ -21,7 +21,7 @@
 
 import os
 
-version = [1, 0, 0]
+version = [1, 1, 0]
 
 from .register_cfunc import *
 clib, cfunc = load_clib()
