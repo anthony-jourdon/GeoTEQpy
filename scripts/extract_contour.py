@@ -92,8 +92,9 @@ def main():
   # extract the file name without the path
   file_basename = os.path.basename(data['model']['file'])
   # output directory, use the one provided or the directory in which the model file is otherwise
-  if "output" in data['model']: output_dir = data['model']['output']
-  else:                         output_dir = os.path.dirname(data['model']['file'])
+  output_dir = data["model"].get("output",os.path.dirname(data["model"]["file"]))
+  if not os.path.isdir(output_dir):
+    os.makedirs(output_dir)
 
   contour_mesh = generate_contour_mesh(data,file_basename,output_dir)
 

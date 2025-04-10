@@ -82,10 +82,9 @@ def main():
     e2_key=data['model'].get('e2_key',None)
   )
 
-  if "output" in data['model']:
-    output_dir = data['model']['output']
-  else:
-    output_dir = os.path.dirname(data['model']['file'])
+  output_dir = data['model'].get('output',os.path.dirname(data['model']['file']))
+  if not os.path.isdir(output_dir):
+    os.makedirs(output_dir)
   
   # extract the file name without the path
   file_basename = os.path.basename(data['model']['file'])

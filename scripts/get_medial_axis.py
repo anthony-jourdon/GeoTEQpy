@@ -66,8 +66,9 @@ def main():
     if contour_file is None:
       raise ValueError("File containing the envelope for which the medial axis needs to be computed is missing. Use the key contour_file: \"path/to/file\".")
     file_basename = os.path.basename(contour_file)
-    if "output" in data: output_dir = data["output"]
-    else: output_dir = os.path.dirname(contour_file)
+    output_dir = data.get("output",os.path.dirname(contour_file))
+    if not os.path.isdir(output_dir):
+      os.makedirs(output_dir)
     # get the contour mesh
     contour_mesh = pvs.read(contour_file)
   else:
@@ -75,6 +76,8 @@ def main():
     file_basename = os.path.basename(data['model']['file'])
     # output directory, use the one provided or the directory in which the model file is otherwise
     output_dir = data["model"].get("output",os.path.dirname(data["model"]["file"]))
+    if not os.path.isdir(output_dir):
+      os.makedirs(output_dir)
     # extract the contour mesh from the model
     contour_mesh = generate_contour_mesh(data,file_basename,output_dir)
     output = gte.replace_extension(os.path.join(output_dir,file_basename),"-contour.vtk")
