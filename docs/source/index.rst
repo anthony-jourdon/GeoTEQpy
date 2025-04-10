@@ -15,8 +15,11 @@ Contents
 ========
 
 .. toctree:: 
+   :maxdepth: 1
 
    installation
    usage
-   example
+   examples/single_fault_example
+   examples/restraining_bend_example
+   examples/rift_example
    module_docs
