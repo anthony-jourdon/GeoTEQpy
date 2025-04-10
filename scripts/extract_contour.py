@@ -6,8 +6,8 @@ import geoteqpy as gte
 from mesh_extrude import extrusion
 
 def get_contour(mesh:pvs.StructuredGrid,isovalue:float=20.0,field_name:str="xi",flip_normals:bool=False) -> pvs.PolyData:
-  point_mesh = mesh.cell_data_to_point_data(pass_cell_data=True)
-  contour_mesh = point_mesh.contour(isosurfaces=[isovalue],scalars=field_name,compute_normals=False)
+  point_mesh = mesh.cell_data_to_point_data()
+  contour_mesh = point_mesh.contour(isosurfaces=[isovalue],scalars=field_name,compute_normals=False,method='contour')
   contour_mesh.compute_normals(flip_normals=flip_normals,inplace=True)
   return contour_mesh
 
