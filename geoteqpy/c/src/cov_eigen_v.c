@@ -26,7 +26,7 @@
 
 #define LOG_DEBUG 0
 
-static inline void sort_ascendant(double w[], int idx[])
+void sort_ascendant(double w[], int idx[])
 {
   if (w[0] <= w[1] && w[0] <= w[2]) {
     if (w[1] <= w[2]) {

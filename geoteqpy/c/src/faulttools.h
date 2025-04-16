@@ -33,6 +33,7 @@
 
 #define NQP 1
 
+void sort_ascendant(double w[], int idx[]);
 int zheevj3(double complex A[3][3], double complex Q[3][3], double w[3]);
 void compute_eigV(long int n_points, double E[], double eig_vec[], double eig_val[]);
 void compute_eigV_sorted(long int n_points, double E[], double eig_vec[], double eig_val[]);

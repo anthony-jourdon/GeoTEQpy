@@ -63,41 +63,6 @@ static void sort_Points(const long int npoints, Points list[])
   qsort( list, np, sizeof(Points), sort_ComparePoints );
 }
 
-static inline void sort_ascendant(double w[], int idx[])
-{
-  if (w[0] <= w[1] && w[0] <= w[2]) {
-    if (w[1] <= w[2]) {
-      idx[0] = 0;
-      idx[1] = 1;
-      idx[2] = 2;
-    } else {
-      idx[0] = 0;
-      idx[1] = 2;
-      idx[2] = 1;
-    }
-  } else if (w[1] <= w[0] && w[1] <= w[2]) {
-    if (w[0] <= w[2]) {
-      idx[0] = 1;
-      idx[1] = 0;
-      idx[2] = 2;
-    } else {
-      idx[0] = 1;
-      idx[1] = 2;
-      idx[2] = 0;
-    }
-  } else {
-    if (w[0] <= w[1]) {
-      idx[0] = 2;
-      idx[1] = 0;
-      idx[2] = 1;
-    } else {
-      idx[0] = 2;
-      idx[1] = 1;
-      idx[2] = 0;
-    }
-  }
-}
-
 static inline double distance2(double pt_A[], double pt_B[])
 {
   int    dim;
