@@ -115,6 +115,16 @@ def load_c_methods(clib):
                        ]
   function["sphere_cov_eig_vectors"] = c_method
   # ===========================================================================================
+  c_method = clib.cov_eig_vectors_knearest
+  c_method.restype = None 
+  c_method.argtypes = [
+    ctypes.c_long,                                    # npoints
+    ctypes.c_long,                                    # k_nearest
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"), # p_coor[]
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS")  # e_vectors[]
+  ]
+  function["cov_eig_vectors_knearest"] = c_method
+  # ===========================================================================================
   c_method = clib.compute_medial_axis_transform
   c_method.restype = None 
   c_method.argtypes = [

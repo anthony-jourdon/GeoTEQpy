@@ -77,10 +77,11 @@ class MedialAxis:
   :Methods:
 
   """
-  def __init__(self,mesh:pvs.UnstructuredGrid,radius_ma:float,radius_cov:float) -> None:
+  def __init__(self,mesh:pvs.UnstructuredGrid,radius_ma:float,radius_cov:float,cov_knearest:int=100) -> None:
     self.mesh        = mesh
     self.radius_ma   = radius_ma
     self.radius_cov  = radius_cov
+    self.cov_knearest = cov_knearest
     self.medial_axis = None
     return
   
@@ -146,7 +147,7 @@ class MedialAxis:
     self.medial_axis = pvs.PolyData(medial_axis)
     return
   
-  def compute_covariance_eigv(self) -> np.ndarray:
+  def compute_covariance_eigv_sphere(self) -> np.ndarray:
     """
     Compute the covariance matrix and its eigen vectors for each point of the medial axis.
 
@@ -209,6 +210,28 @@ class MedialAxis:
     t1 = perf_counter()
     print(f"-> compute_covariance_eigv() execution time: {t1-t0:g} (sec)")
     return e_vectors
+  
+  def compute_covariance_eigv_knearest(self) -> np.ndarray:
+    t0 = perf_counter()
+    points  = np.array(self.medial_axis.points, dtype=np.float64)
+    npoints = points.shape[0]
+    # Prepare function arguments
+    p_coords_v = np.reshape(points, (npoints*3)) # flattened coordinates array
+    e_vectors  = np.zeros(shape=(npoints*9), dtype=np.float64) # initialized flat array for eigen vectors
+    gte.cfunc["utils"]["cov_eig_vectors_knearest"](
+      np.int64(npoints), # number of points
+      np.int64(self.cov_knearest), # number of nearest neighbors to compute the covariance matrix
+      np.float64(p_coords_v), # flattened coordinates array
+      e_vectors # eigen vectors returned by the function
+    )
+    # Reshape to get (npoints, 3, 3)
+    e_vectors = np.reshape(e_vectors, (npoints,3,3))
+    t1 = perf_counter()
+    print(f"-> compute_covariance_eigv() execution time: {t1-t0:g} (sec)")
+    return e_vectors
+
+  def compute_covariance_eigv(self) -> np.ndarray:
+    return self.compute_covariance_eigv_knearest()
 
   def get_orientation_vectors(self):
     """

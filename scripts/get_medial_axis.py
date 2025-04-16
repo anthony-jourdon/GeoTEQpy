@@ -26,8 +26,8 @@ import pyvista as pvs
 import geoteqpy as gte
 from extract_contour import generate_contour_mesh
 
-def compute_medial_axis(mesh:pvs.PolyData,radius_ma:float,get_eigv:bool,radius_cov:float) -> pvs.PolyData:
-  ma = gte.MedialAxis(mesh=mesh,radius_ma=radius_ma,radius_cov=radius_cov)
+def compute_medial_axis(mesh:pvs.PolyData,radius_ma:float,get_eigv:bool,radius_cov:float,knearest:int) -> pvs.PolyData:
+  ma = gte.MedialAxis(mesh=mesh,radius_ma=radius_ma,radius_cov=radius_cov,cov_knearest=knearest)
   medial_axis = ma.get_medial_axis_mesh(get_eigv=get_eigv)
   return medial_axis
 
@@ -87,7 +87,8 @@ def main():
     contour_mesh,
     float(data["medial_axis"].get("radius_ma",1e5)),
     data["medial_axis"].get("get_eigv_cov",False),
-    float(data["medial_axis"].get("radius_cov",1e4))
+    float(data["medial_axis"].get("radius_cov",1e4)),
+    int(data["medial_axis"].get("cov_knearest",100))
   )
   output = gte.replace_extension(os.path.join(output_dir,file_basename),"-ma.vtp")
   medial_axis.save(output)
