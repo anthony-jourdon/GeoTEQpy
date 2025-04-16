@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS = -fPIC -Wall -O2 -march=native
-#CFLAGS = -fPIC -Wall -O0
+#CFLAGS = -fPIC -Wall -O0 -g
 LIBS = -lm
-LD_FLAGS = -shared -fPIC
+LD_FLAGS = -shared -fPIC -Wl,-rpath=/home/jourdon/Software/GeoTEQpy/geoteqpy/c/lib
 
 SRC =  src/cov_eigen_v.c \
 	src/eigen_v.c \
@@ -10,9 +10,11 @@ SRC =  src/cov_eigen_v.c \
 	src/cov_eigen_v_mesh.c \
 	src/kdtree.c \
 	src/compute_medial_axis.c \
-	src/dc_patches.c
+	src/dc_patches.c \
+	src/max_heap.c \
+	src/cov_eigen_v_nearest.c \
 
-HDR = 	src/ft_constants.h src/faulttools.h src/SortPCtx.h src/kdtree.h
+HDR = 	src/ft_constants.h src/faulttools.h src/SortPCtx.h src/kdtree.h src/max_heap.h
 
 INC = src
 
