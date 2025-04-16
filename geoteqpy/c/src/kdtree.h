@@ -27,6 +27,8 @@
 #ifndef __kdtree_h__
 #define __kdtree_h__
 
+#include "max_heap.h"
+
 #define KDTR_MAX_DIM 3
 
 typedef struct _p_kd_node_t* kd_node;
@@ -56,5 +58,5 @@ void KDTreeGetPoints(KDTree k,int *n,kd_node *nodes);
 void KDTreeInsertPoint(KDTree k,double coor[]);
 void KDTreeSetup(KDTree kt);
 void KDTreeFindNearest(KDTree k,double coor[],kd_node *nearest,double *sep);
-
+void KDTreeFindKNearest(KDTree kt, double coor[], maxheap *heap);
 #endif

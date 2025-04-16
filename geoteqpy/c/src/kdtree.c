@@ -312,6 +312,62 @@ void KDTreeFindNearest(KDTree kt,double coor[],kd_node *nearest,double *sep)
   if (sep) { *sep = sqrt(best_dist); }
 }
 
+static void kdtr_k_nearest(kd_node root, kd_node nd, int i, int dim, maxheap *heap)
+{
+  heap_node node;
+  double  *best_dist;
+  double  d, dx, dx2;
+  int     node_idx;
+
+  if (!root) return;
+  d = kdtr_dist(root, nd, dim);
+  dx = root->x[i] - nd->x[i];
+  dx2 = dx * dx;
+
+  kdtr_visited ++;
+
+  node_idx  = heap->nodes[0].global_idx;
+  best_dist = &heap->nodes[0].distance;
+
+  if (node_idx < 0 || heap->cnt < heap->npoints) {
+    // maxheap is not full, insert new node
+    node.distance   = d;
+    node.global_idx = root->index;
+    MaxHeapInsert(heap, &node);
+  } else if (d < heap->nodes[0].distance) {
+    /* maxheap is full, 
+    replace root with new node only if distance is smaller 
+    than the root of the maxheap (always the greatest value) */
+    node.distance   = d;
+    node.global_idx = root->index;
+    MaxHeapReplaceRoot(heap, &node);
+  }
+
+  /* if chance of exact match is high */
+  if (!best_dist) return;
+
+  if (++i >= dim) i = 0;
+
+  kdtr_k_nearest(dx > 0 ? root->left : root->right, nd, i, dim, heap);
+  if (dx2 >= *best_dist) return;
+  kdtr_k_nearest(dx > 0 ? root->right : root->left, nd, i, dim, heap);
+}
+
+void KDTreeFindKNearest(KDTree kt, double coor[], maxheap *heap)
+{
+  struct _p_kd_node_t test_node;
+  
+  if (kt->setup == 0) {
+    printf("[kdtree error] KDTree not setup. Must call KDTreeSetup() before KDTreeFindKNearest().\n");
+    return;
+  }
+  
+  kdtr_node_init(&test_node);
+  memcpy(test_node.x, coor, sizeof(double)*kt->dim);
+
+  kdtr_k_nearest(kt->root,&test_node,0,kt->dim,heap);
+}
+
 #if 0
 
 #define N 1000000
