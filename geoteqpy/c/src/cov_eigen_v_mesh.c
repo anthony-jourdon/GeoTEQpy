@@ -249,7 +249,7 @@ static void PointsSearch_NeighbourCells_Sphere(int chunck_bounds[],
   /* return the number of points */
   *npoints = point_count;
 }
-
+#if 0
 static void ComputePointsetEigv(int cell_idx, 
                                 int msize[], 
                                 int offset[], 
@@ -327,6 +327,67 @@ static void ComputePointsetEigv(int cell_idx,
       eig_vec[i][j] = (double)Q[idx[i]][j];
     }
   }
+  free(data);
+}
+#endif
+
+static void ComputePointsetEigv(
+  int cell_idx, 
+  int msize[], 
+  int offset[], 
+  double p_coords[],
+  double centre[], 
+  double r2,
+  int patch_extent,
+  Points *plist,
+  double eig_val[], 
+  double eig_vec[][3]
+)
+{
+  int    d,nps,ierr;
+  int    max_point_per_chunck,point_count,chunck_bounds[6];
+  int    *in_sphere_idx;
+  double *data;
+
+  /* i,j,k indices of the cells chunk in which we will search */
+  GetChunckBoundsIndices(cell_idx,msize,chunck_bounds,patch_extent);
+
+  /* Count how much point there are in the cell chunck we look in */
+  max_point_per_chunck = GetMaxPointsPerChunk(chunck_bounds,msize,offset);
+
+#if (LOG_DEBUG > 0)
+  printf("Cell[%d]: max_point_per_chunck = %d\n",cell_idx,max_point_per_chunck);
+#endif
+
+  /* Allocate an array to store the indices of the points that are inside the sphere */
+  in_sphere_idx = (int*)malloc( (max_point_per_chunck)*sizeof(int) ); 
+  /* Search which points are in the sphere and fill the array containing their indices */
+  PointsSearch_NeighbourCells_Sphere(chunck_bounds,msize,offset,p_coords,centre,r2,plist,in_sphere_idx,&point_count);
+
+#if (LOG_DEBUG > 0)
+  printf("Number of points in the sphere: %d\n",point_count);
+#endif
+
+  /* Allocate the array containing the coords of the points inside the sphere */
+  data = (double*)malloc( (3*point_count)*sizeof(double) );
+  for (nps=0; nps<point_count; nps++) {
+    int pidx;
+    /* unsorted point index (original list) */
+    pidx = plist[ in_sphere_idx[ nps ] ].point_index;
+    /* fill the data array on which we will compute the covariance matrix */
+    for (d=0; d<NSD_3D; d++) {
+      data[3*nps + d] = p_coords[3*pidx + d];
+    }
+#if (LOG_DEBUG > 0)
+  printf("datapoint[%d]:  point[%d]: coords = [%f, %f, %f]\n",nps,in_sphere_idx[ nps ],data[3*nps + 0],data[3*nps + 1],data[3*nps + 2]);
+#endif
+  }
+  /* Free the array containing the indices, we don't need it anymore */
+  free(in_sphere_idx);
+
+  /* compute the covariance matrix and its eigen-decomposition of this set of points */
+  compute_covariance_eigenvectors(point_count,data,eig_val,eig_vec);
+  
   free(data);
 }
 
@@ -419,7 +480,6 @@ static void CreatePoint2CellConnectivity(long int npoints, int ncells, double p_
     printf("cell[%d]: offset = %d, points in cell = %d\n",c,pcell_list[c],pcell_list[c+1]-pcell_list[c]);
   }
 #endif
-
 }
 
 void sphere_cov_eig_vectors(long int npoints, 
@@ -440,10 +500,6 @@ void sphere_cov_eig_vectors(long int npoints,
   CreatePoint2CellConnectivity(npoints,ncells,p_coords,p_cellidx,pcell_list,plist);
 
   ComputeCovEigVectors(radius,npoints,msize,pcell_list,p_coords,plist,1,e_vectors);
-
-#if (LOG_DEBUG > 0)
-  printf("done\n");
-#endif
 
   free(plist);
   free(pcell_list);

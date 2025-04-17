@@ -66,6 +66,43 @@ void compute_covariance_matrix_3d(long int npoints, double data[], double cov_ma
   }
 }
 
+void compute_covariance_eigenvectors(
+  long int npoints,
+  double point_data[],
+  double eig_val[],
+  double eig_vec[][3]
+)
+{
+  int i,j,ierr;
+  int sorted_idx[3];
+  double cov_matrix[3][3],w[3];
+  double complex Q[3][3],A[3][3];
+
+  /* compute the covariance matrix of this set of points */
+  compute_covariance_matrix_3d(npoints,point_data,cov_matrix);
+  /* typecast it for the eigen computation */
+  for (i=0; i<NSD_3D; i++) {
+    for (j=0; j<NSD_3D; j++) {
+      A[i][j] = (double complex)cov_matrix[i][j];
+    }
+  }
+  /* compute the eigen vectors and eigen values of the covariance matrix */
+  ierr = zheevj3(A, Q, w);
+
+  /* Determine index of the sorted eigen values in ascending order such that
+      w[idx[0]] <= w[idx[1]] <= w[idx[2]]
+  */
+  sort_ascendant(w,sorted_idx);
+  /* Sort eigen values and vectors */
+  for (i=0; i<NSD_3D; i++) {
+    eig_val[i] = w[sorted_idx[i]];
+    for (j=0; j<NSD_3D; j++) {
+      eig_vec[i][j] = (double)Q[sorted_idx[i]][j];
+    }
+  }
+  return;
+}
+
 void ft_compute_covariance_matrix_3d(long int npoints, double data[], double cov_v[])
 {
   int   i,j,cnt;
