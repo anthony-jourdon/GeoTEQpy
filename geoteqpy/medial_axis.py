@@ -40,8 +40,17 @@ class MedialAxis:
     Mesh of the shape for which the medial axis is computed.
   :param float radius_ma:
     Radius of research for the medial axis.
-  :param float radius_cov:
-    Radius of research for the covariance matrix.
+  :param str pca_method:
+    Method to compute the covariance matrix and its eigenvectors.
+    Available methods are ``"sphere"`` or ``"knearest"``.
+    
+    - ``"sphere"``: compute the covariance matrix using a sphere of radius ``cov_radius``.
+    - ``"knearest"``: compute the covariance matrix using the ``cov_knearest`` nearest neighbors.
+  
+  :param float cov_radius:
+    Radius of the sphere to select the points for the covariance matrix. Default is 1e4.
+  :param int cov_knearest:
+    Number of nearest neighbors to select the points for the covariance matrix. Default is 100.
 
   :Attributes:
 
@@ -55,10 +64,10 @@ class MedialAxis:
 
     Radius of research for the medial axis.
 
-  .. py:attribute:: radius_cov
-    :type: float
+  .. py:attribute:: pca
+    :type: geoteqpy.PCA
 
-    Radius of research for the covariance matrix.
+    PCA object to compute the covariance matrix and its eigenvectors.
 
   :Example:
 
@@ -69,10 +78,8 @@ class MedialAxis:
 
     # Load a mesh
     mesh = pvs.read("path/to/mesh.vtu")
-    # Create a MedialAxis object
-    ma = gte.MedialAxis(mesh=mesh,radius_ma=0.5,radius_cov=1.0)
-    # Compute the medial axis and the orientation vectors
-    medial_axis = ma.get_medial_axis_mesh()
+    # Create a MedialAxis object, compute the medial axis and the orientation vectors
+    ma = gte.MedialAxis(mesh=mesh,radius_ma=1e4,pca_method="knearest",cov_knearest=100)
 
   :Methods:
 
@@ -95,10 +102,6 @@ class MedialAxis:
   def get_medial_axis_mesh(self) -> pvs.PolyData:
     """
     Get the medial axis mesh.
-
-    :param bool get_eigv:
-      If ``True``, the orientation vectors are computed and added to the mesh.
-      Default is ``True``.
 
     :return:
       Pyvista mesh object of the medial axis points.
@@ -155,92 +158,6 @@ class MedialAxis:
     t1 = perf_counter()
     print(f"-> compute_medial_axis() execution time: {t1-t0:g} (sec)")
     return
-
-  def compute_covariance_eigv_sphere(self) -> np.ndarray:
-    """
-    Compute the covariance matrix and its eigen vectors for each point of the medial axis.
-
-    :return:
-      Array of the eigen vectors for each point of the medial axis.
-      Shape is ``(npoints, 3, 3)`` where npoints is the number of points in the medial axis,
-
-      - ``[:,0,:]`` is the first eigen vector, 
-      - ``[:,1,:]`` is the second eigen vector and 
-      - ``[:,2,:]`` is the third eigen vector.
-    :rtype: np.ndarray
-    """
-    if self.medial_axis is None:
-      self.compute_medial_axis()
-    t0 = perf_counter()
-    points = np.array(self.medial_axis.points, dtype=np.float32) # check if np.float64 needed
-    if points.ndim != 2:
-      raise RuntimeError(f'points coordinates must be of the shape (npoints, 3). Given shape: {points.shape}')
-    # Get the number of points
-    npoints = points.shape[0]
-
-    # define min and max coords of our points
-    O = np.array([ np.min(points[:,0]), np.min(points[:,1]), np.min(points[:,2]) ], dtype=np.float32)
-    L = np.array([ np.max(points[:,0]), np.max(points[:,1]), np.max(points[:,2]) ], dtype=np.float32)
-
-    # define how much cell we need to get cells of length radius
-    # transform into an integer
-    # warning python int() function returns the integer part of a number so add 1 to be sure to contain every point
-    m = np.int64(( L - O )/self.radius_cov + 1)
-    # create a mesh around our points
-    mesh = CFEMeshQ1(3, m[0], m[1], m[2])
-    # create the connectivity table
-    mesh.create_e2v()
-    # give it coords
-    # WARNING: to ensure that all points are in the mesh maybe we need (mesh, O - radius, L + radius) To check
-    fe_utils.femesh_set_uniform_coordinates(mesh, O, L)
-    # Locate points in the mesh and attribute them an element index and local coords
-    t2 = perf_counter()
-    el_p,xi_p = fe_utils.femesh_point_location(mesh, points)
-    t3 = perf_counter()
-    print(f"femesh_point_location() located npoints: {npoints} in execution time: {t3-t2:g} (sec)")
-
-    # Prepare function arguments
-    p_coords_v = np.reshape(points, (npoints*3)) # flattened coordinates array
-    msize      = np.array([mesh.m, mesh.n, mesh.p], dtype=np.int32) # mesh size
-    e_vectors  = np.zeros(shape=(npoints*9), dtype=np.float64) # initialized flat array for eigen vectors
-    
-    # Call the c function that computes the covariance matrix and its eigen vectors
-    gte.cfunc["utils"]["sphere_cov_eig_vectors"](
-      np.int64(npoints), # number of points
-      np.int32(mesh.ne), # number of cells
-      msize,             # mesh size
-      np.float64(p_coords_v), # flattened coordinates array
-      np.int32(el_p), # cell indices of the points
-      np.float32(self.radius_cov), # radius of research for the coviariance matrix
-      e_vectors # eigen vectors returned by the function
-    )
-    # Reshape to get (npoints, 3, 3)
-    e_vectors = np.reshape(e_vectors, (npoints,3,3))
-    t1 = perf_counter()
-    print(f"-> compute_covariance_eigv() execution time: {t1-t0:g} (sec)")
-    return e_vectors
-  
-  def compute_covariance_eigv_knearest(self) -> np.ndarray:
-    t0 = perf_counter()
-    points  = np.array(self.medial_axis.points, dtype=np.float64)
-    npoints = points.shape[0]
-    # Prepare function arguments
-    p_coords_v = np.reshape(points, (npoints*3)) # flattened coordinates array
-    e_vectors  = np.zeros(shape=(npoints*9), dtype=np.float64) # initialized flat array for eigen vectors
-    gte.cfunc["utils"]["cov_eig_vectors_knearest"](
-      np.int64(npoints), # number of points
-      np.int64(self.cov_knearest), # number of nearest neighbors to compute the covariance matrix
-      np.float64(p_coords_v), # flattened coordinates array
-      e_vectors # eigen vectors returned by the function
-    )
-    # Reshape to get (npoints, 3, 3)
-    e_vectors = np.reshape(e_vectors, (npoints,3,3))
-    t1 = perf_counter()
-    print(f"-> compute_covariance_eigv() for {npoints} points, execution time: {t1-t0:g} (sec)")
-    return e_vectors
-
-  def compute_covariance_eigv(self) -> np.ndarray:
-    return self.compute_covariance_eigv_knearest()
 
   def get_orientation_vectors(self):
     """

@@ -5,6 +5,12 @@ from pyviztools import CFEMeshQ1
 from time import perf_counter
 
 class PCA:
+  """
+  Class to compute the Principal Component Analysis (PCA) of a set of points in 3D space.
+  The PCA is computed using the covariance matrix of the points.
+
+  This class is the Parent class of the PCA classes. It is not meant to be used directly. 
+  """
   def __init__(self, points):
     self.points  = np.array(points, dtype=np.float64)
     if self.points.ndim != 2:
@@ -16,6 +22,10 @@ class PCA:
     raise NotImplementedError(f"Class {self.__class__.__name__} does not contain compute_pca() method. Must use one of the derived classes.")
   
 class SpherePCA(PCA):
+  """
+  Class to compute the Principal Component Analysis (PCA) of a set of points in 3D space 
+  using a sphere to select the points that contribute to the covariance matrix.
+  """
   def __init__(self, points, radius):
     super().__init__(points)
     self.radius = radius
@@ -78,12 +88,28 @@ class SpherePCA(PCA):
     return e_vectors
 
 class KNearestPCA(PCA):
+  """
+  Class to compute the Principal Component Analysis (PCA) of a set of points in 3D space 
+  using the K-nearest neighbours points to select the points that contribute to the covariance matrix.
+  """
   def __init__(self, points, knearest):
     super().__init__(points)
     self.knearest = knearest
     return
   
   def compute_pca(self):
+    """
+    Compute the covariance matrix and its eigen vectors for each point of the medial axis.
+
+    :return:
+      Array of the eigen vectors for each point of the medial axis.
+      Shape is ``(npoints, 3, 3)`` where npoints is the number of points in the medial axis,
+
+      - ``[:,0,:]`` is the first eigen vector, 
+      - ``[:,1,:]`` is the second eigen vector and 
+      - ``[:,2,:]`` is the third eigen vector.
+    :rtype: np.ndarray
+    """
     t0 = perf_counter()
     # Prepare function arguments
     p_coords_v = np.reshape(self.points, (self.npoints*3)) # flattened coordinates array
