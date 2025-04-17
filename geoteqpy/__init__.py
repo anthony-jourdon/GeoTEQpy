@@ -21,15 +21,16 @@
 
 import os
 
-version = [1, 1, 0]
+version = [1, 1, 2]
 
 from .register_cfunc import *
 clib, cfunc = load_clib()
 
-from .ptatin_load       import *
-from .asagi             import *
-from .rotations         import *
-from .ptatin_to_seissol import *
-from .field_utils       import *
-from .mesh_extrusion    import *
-from .medial_axis       import *
+from .ptatin_load                  import *
+from .asagi                        import *
+from .rotations                    import *
+from .ptatin_to_seissol            import *
+from .field_utils                  import *
+from .mesh_extrusion               import *
+from .principal_component_analysis import *
+from .medial_axis                  import *

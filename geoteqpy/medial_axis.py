@@ -77,15 +77,22 @@ class MedialAxis:
   :Methods:
 
   """
-  def __init__(self,mesh:pvs.UnstructuredGrid,radius_ma:float,radius_cov:float,cov_knearest:int=100) -> None:
-    self.mesh        = mesh
-    self.radius_ma   = radius_ma
-    self.radius_cov  = radius_cov
-    self.cov_knearest = cov_knearest
-    self.medial_axis = None
+  def __init__(self,mesh:pvs.UnstructuredGrid,radius_ma:float,pca_method:str="sphere",cov_radius:float=1e4,cov_knearest:int=100) -> None:
+    self.mesh                     = mesh
+    self.radius_ma                = radius_ma
+    self.medial_axis:pvs.PolyData = None
+    # compute the medial axis
+    self.compute_medial_axis()
+
+    self.pca:gte.PCA = None
+    if pca_method == "sphere":
+      self.pca = gte.SpherePCA(points=self.medial_axis.points,radius=cov_radius)
+    elif pca_method == "knearest":
+      self.pca = gte.KNearestPCA(points=self.medial_axis.points,knearest=cov_knearest)
+    self.get_orientation_vectors()
     return
   
-  def get_medial_axis_mesh(self,get_eigv:bool=True) -> pvs.PolyData:
+  def get_medial_axis_mesh(self) -> pvs.PolyData:
     """
     Get the medial axis mesh.
 
@@ -99,8 +106,7 @@ class MedialAxis:
     """
     if self.medial_axis is None:
       self.compute_medial_axis()
-    if get_eigv:
-      self.get_orientation_vectors()
+    self.get_orientation_vectors()
     return self.medial_axis
 
   def compute_medial_axis(self) -> pvs.PolyData:
@@ -108,6 +114,7 @@ class MedialAxis:
     Compute the medial axis of the shape.
     Attach the result to the class attribute :py:attr:`medial_axis <geoteqpy.MedialAxis.medial_axis>`. 
     """
+    t0 = perf_counter()
     # get points coordinates
     points = self.mesh.points
     # get points normals
@@ -128,8 +135,8 @@ class MedialAxis:
       raise RuntimeError(f'The number of points and the number of normals are different: (npoints, nnormals) = ({npoints,normals.shape[0]})') 
 
     # flatten arrays for c memory
-    points_v = np.float64( np.reshape(points,  newshape=(ndim*npoints)) )
-    normal_v = np.float64( np.reshape(normals, newshape=(ndim*npoints)) )
+    points_v = np.float64( np.reshape(points,  (ndim*npoints)) )
+    normal_v = np.float64( np.reshape(normals, (ndim*npoints)) )
     medial_axis_v = np.zeros(shape=(ndim*npoints), dtype=np.float64)
     # call the c function that computes the medial axis
     gte.cfunc["utils"]["medial_axis"](
@@ -142,11 +149,13 @@ class MedialAxis:
       medial_axis_v # returned coordinates of the points in the medial axis
     )
     # reshape medial axis into (npoints, 3)
-    medial_axis = np.reshape(medial_axis_v,newshape=(npoints,ndim))
+    medial_axis = np.reshape(medial_axis_v, (npoints,ndim))
     # create a pyvista object of the medial axis points
     self.medial_axis = pvs.PolyData(medial_axis)
+    t1 = perf_counter()
+    print(f"-> compute_medial_axis() execution time: {t1-t0:g} (sec)")
     return
-  
+
   def compute_covariance_eigv_sphere(self) -> np.ndarray:
     """
     Compute the covariance matrix and its eigen vectors for each point of the medial axis.
@@ -191,7 +200,7 @@ class MedialAxis:
     print(f"femesh_point_location() located npoints: {npoints} in execution time: {t3-t2:g} (sec)")
 
     # Prepare function arguments
-    p_coords_v = np.reshape(points, newshape=(npoints*3)) # flattened coordinates array
+    p_coords_v = np.reshape(points, (npoints*3)) # flattened coordinates array
     msize      = np.array([mesh.m, mesh.n, mesh.p], dtype=np.int32) # mesh size
     e_vectors  = np.zeros(shape=(npoints*9), dtype=np.float64) # initialized flat array for eigen vectors
     
@@ -206,7 +215,7 @@ class MedialAxis:
       e_vectors # eigen vectors returned by the function
     )
     # Reshape to get (npoints, 3, 3)
-    e_vectors = np.reshape(e_vectors, newshape=(npoints,3,3))
+    e_vectors = np.reshape(e_vectors, (npoints,3,3))
     t1 = perf_counter()
     print(f"-> compute_covariance_eigv() execution time: {t1-t0:g} (sec)")
     return e_vectors
@@ -227,7 +236,7 @@ class MedialAxis:
     # Reshape to get (npoints, 3, 3)
     e_vectors = np.reshape(e_vectors, (npoints,3,3))
     t1 = perf_counter()
-    print(f"-> compute_covariance_eigv() execution time: {t1-t0:g} (sec)")
+    print(f"-> compute_covariance_eigv() for {npoints} points, execution time: {t1-t0:g} (sec)")
     return e_vectors
 
   def compute_covariance_eigv(self) -> np.ndarray:
@@ -239,15 +248,19 @@ class MedialAxis:
     :py:attr:`medial_axis <geoteqpy.MedialAxis.medial_axis>` mesh 
     if they are not already present.
     """
+    if self.pca is None:
+      return
     keys = list(self.medial_axis.point_data.keys())
     keys.extend(self.medial_axis.cell_data.keys())
     # check if the orientation vectors are already on the mesh
-    if ("eigv_0" not in keys or 
-        "eigv_1" not in keys or 
-        "eigv_2" not in keys):
-      eigvec = self.compute_covariance_eigv()
-    # get the orientation vectors
-    self.medial_axis["eigv_0"] = eigvec[:,0,:]
-    self.medial_axis["eigv_1"] = eigvec[:,1,:]
-    self.medial_axis["eigv_2"] = eigvec[:,2,:]
+    if "eigv_0" in keys and "eigv_1" in keys and "eigv_2" in keys:
+      # if they are already present, do nothing
+      return
+    if self.pca is not None:
+      # compute the PCA
+      eigvec = self.pca.compute_pca()
+      # get the orientation vectors
+      self.medial_axis["eigv_0"] = eigvec[:,0,:]
+      self.medial_axis["eigv_1"] = eigvec[:,1,:]
+      self.medial_axis["eigv_2"] = eigvec[:,2,:]
     return

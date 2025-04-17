@@ -21,6 +21,7 @@
 
 import numpy as np
 import pyvista as pvs
+from time import perf_counter
 
 class Extrusion:
   # TODO: add ne, face, and dx as class attributes
@@ -225,6 +226,7 @@ class Extrusion:
     return
 
   def extrude_mesh(self,ne:int,dx:float,face:str,fields:list[str]|None=None) -> pvs.StructuredGrid:
+    t0 = perf_counter()
     extruded_coords = self.extrude_coordinates(ne,dx,face)
     dirmap = {0: self.mesh.x, 1: self.mesh.y, 2: self.mesh.z}
 
@@ -242,6 +244,8 @@ class Extrusion:
           self.merge_cellfield(field,extruded_mesh,ne,face)
         if field in self.mesh.point_data:
           self.merge_pointfield(field,extruded_mesh,ne,face)
+    t1 = perf_counter()
+    print(f"-> extrude_mesh() execution time: {t1-t0:g} (sec)")
     return extruded_mesh
 
 def test_extrude_coor():

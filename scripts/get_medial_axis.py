@@ -26,9 +26,15 @@ import pyvista as pvs
 import geoteqpy as gte
 from extract_contour import generate_contour_mesh
 
-def compute_medial_axis(mesh:pvs.PolyData,radius_ma:float,get_eigv:bool,radius_cov:float,knearest:int) -> pvs.PolyData:
-  ma = gte.MedialAxis(mesh=mesh,radius_ma=radius_ma,radius_cov=radius_cov,cov_knearest=knearest)
-  medial_axis = ma.get_medial_axis_mesh(get_eigv=get_eigv)
+def compute_medial_axis(
+    mesh:pvs.PolyData,
+    radius_ma:float,
+    pca_method:str="None",
+    radius_cov:float=1e4,
+    knearest:int=100
+  ) -> pvs.PolyData:
+  ma = gte.MedialAxis(mesh=mesh,radius_ma=radius_ma,pca_method=pca_method,cov_radius=radius_cov,cov_knearest=knearest)
+  medial_axis = ma.get_medial_axis_mesh()
   return medial_axis
 
 def main():
@@ -50,8 +56,9 @@ def main():
   help_str += '    dx: step size for the extrusion\n'
   help_str += '  medial_axis:\n'
   help_str += '    radius_ma: (optional) radius of the medial axis. Default: 1e5\n'
-  help_str += '    get_eigv_cov: (optional) if True, the eigenvectors and covariance are computed. Default: False\n'
-  help_str += '    radius_cov: (optional) radius of the covariance. Default: 1e4\n'
+  help_str += '    pca_method: (optional) method to compute the covariance matrix and its eigenvectors. Available: \"sphere\" or \"knearest\". Default: None\n'
+  help_str += '    radius_cov: (optional) radius of the sphere to compute the covariance matrix if the pca_method \"sphere\" is used. Default: 1e4\n'
+  help_str += '    knearest: (optional) number of nearest neighbors to compute the covariance matrix if the pca_method \"knearest\" is used. Default: 100\n'
   parser.add_argument('-f','--yaml_file',type=str,help=help_str,dest='yaml_file',required=True)
 
   args = parser.parse_args()
@@ -86,9 +93,9 @@ def main():
   medial_axis = compute_medial_axis(
     contour_mesh,
     float(data["medial_axis"].get("radius_ma",1e5)),
-    data["medial_axis"].get("get_eigv_cov",False),
+    data["medial_axis"].get("pca_method",None),
     float(data["medial_axis"].get("radius_cov",1e4)),
-    int(data["medial_axis"].get("cov_knearest",100))
+    int(data["medial_axis"].get("knearest_cov",100))
   )
   output = gte.replace_extension(os.path.join(output_dir,file_basename),"-ma.vtp")
   medial_axis.save(output)
