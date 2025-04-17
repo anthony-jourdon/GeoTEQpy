@@ -25,11 +25,10 @@
 #include <stdbool.h>
 
 #include "faulttools.h"
-#include "kdtree.h"
 
 #define LOG_DEBUG 0
 
-static void ComputeCovEigVectors(
+void compute_covariance_eigenvectors_k_nearest(
   KDTree kdtree, 
   long int k_nearest, 
   long int npoints, 
@@ -75,37 +74,4 @@ static void ComputeCovEigVectors(
   MaxHeapDestroy(heap);
   free(nearest_points);
   return;
-}
-
-void cov_eig_vectors_knearest(
-  long int npoints,
-  long int k_nearest,
-  double p_coords[],
-  double e_vectors[]
-)
-{
-  KDTree   kdtree;
-  kd_node  nodes;
-  int      d;
-  long int np;
-
-  /* allocate kdtree data structure */
-  KDTreeCreate(3,&kdtree);
-  /* set points */
-  KDTreeSetPoints(kdtree,npoints);
-  /* fill kdtree points */
-  KDTreeGetPoints(kdtree,NULL,&nodes);
-  for (np=0; np<npoints; np++) {
-    /* assign coordinates */
-    for (d=0; d<NSD_3D; d++) {
-      nodes[np].x[d] = p_coords[NSD_3D*np + d];
-    }
-    /* assign indices */
-    nodes[np].index = np;
-  }
-  KDTreeSetup(kdtree);
-  /* Compute the covariance matrix eigenvectors for each point */
-  ComputeCovEigVectors(kdtree,k_nearest,npoints,p_coords,e_vectors);
-  /* free kdtree */
-  KDTreeDestroy(&kdtree);
 }

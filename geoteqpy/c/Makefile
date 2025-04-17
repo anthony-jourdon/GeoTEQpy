@@ -13,6 +13,7 @@ SRC =  src/cov_eigen_v.c \
 	src/dc_patches.c \
 	src/max_heap.c \
 	src/cov_eigen_v_nearest.c \
+	src/pca.c \
 
 HDR = 	src/ft_constants.h src/faulttools.h src/SortPCtx.h src/kdtree.h src/max_heap.h
 

@@ -30,6 +30,8 @@
 #include <complex.h>
 
 #include "ft_constants.h"
+#include "kdtree.h"
+#include "SortPCtx.h"
 
 #define NQP 1
 
@@ -41,5 +43,9 @@ void compute_covariance_matrix_3d(long int npoints, double data[], double cov_ma
 void compute_covariance_eigenvectors(long int npoints, double point_data[], double eig_val[], double eig_vec[][3]);
 
 void ft_compute_cov_eig_vectors(float radius, double point_coor[], long int npoints, double vectors[]);
+
+void compute_covariance_eigenvectors_k_nearest(KDTree kdtree, long int k_nearest, long int npoints, double points[], double e_vectors[]);
+void compute_covariance_eigenvectors_sphere(float radius, long int npoints, int ncells, int p_cellidx[], int pcell_list[], int msize[], int offset[], double p_coords[], Points *plist, int patch_extent, double e_vectors[]);
+
 
 #endif

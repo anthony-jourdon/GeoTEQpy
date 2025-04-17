@@ -25,7 +25,6 @@
 #include <stdbool.h>
 
 #include "faulttools.h"
-#include "SortPCtx.h"
 
 
 #define LOG_DEBUG 0
@@ -82,6 +81,48 @@ static inline bool is_in_sphere(double centre[], double point[], double r2)
 
   dist2 = distance2(centre,point);
   return (dist2 <= r2);
+}
+
+static void CreatePoint2CellConnectivity(long int npoints, int ncells, double p_coords[], int p_cellidx[], int pcell_list[], Points *plist)
+{
+  int p,c,count,tmp;
+
+  for (p=0; p<npoints; p++) {
+    plist[p].point_index     = p;
+    plist[p].cell_index      = p_cellidx[p]; 
+  }
+
+  /* Sort the points in cell index ascending order */
+  sort_Points(npoints,plist);
+
+  /* sum points per cell */
+  memset( pcell_list, 0, (ncells+1)*sizeof(int) ); // Initialize to 0
+  for (p=0; p<npoints; p++) {
+    pcell_list[ plist[p].cell_index ]++;
+
+#if (LOG_DEBUG > 0)
+    printf("plist[%d]: cell_index = %d, point_index = %d, coords = [%f, %f, %f]\n",p,plist[p].cell_index,plist[p].point_index,p_coords[3*p],p_coords[3*p+1],p_coords[3*p+2]);
+#endif
+  }
+
+  /* 
+  Create offset list 
+  This list contains the sum of the points from cell index 0 to cell index c
+  */
+  count = 0;
+  for (c=0; c<ncells; c++) {
+    tmp = pcell_list[c];
+    pcell_list[c] = count;
+    count += tmp;
+  }
+  pcell_list[c] = count;
+
+#if (LOG_DEBUG > 0)
+  printf("****** offset list ******\n");
+  for (c=0; c<ncells; c++) {
+    printf("cell[%d]: offset = %d, points in cell = %d\n",c,pcell_list[c],pcell_list[c+1]-pcell_list[c]);
+  }
+#endif
 }
 
 static void GetChunckBoundsIndices(int cell_idx, int msize[], int chunck_bounds[], int patch_extent)
@@ -249,87 +290,6 @@ static void PointsSearch_NeighbourCells_Sphere(int chunck_bounds[],
   /* return the number of points */
   *npoints = point_count;
 }
-#if 0
-static void ComputePointsetEigv(int cell_idx, 
-                                int msize[], 
-                                int offset[], 
-                                double p_coords[],
-                                double centre[], 
-                                double r2,
-                                int patch_extent,
-                                Points *plist,
-                                double eig_val[], 
-                                double eig_vec[][3])
-{
-  int    i,j,d,nps,idx[3],ierr;
-  int    max_point_per_chunck,point_count,chunck_bounds[6];
-  int    *in_sphere_idx;
-  double *data;
-  double cov_matrix[3][3],w[3];
-  double complex Q[3][3],A[3][3];
-
-  /* i,j,k indices of the cells chunk in which we will search */
-  GetChunckBoundsIndices(cell_idx,msize,chunck_bounds,patch_extent);
-
-  /* Count how much point there are in the cell chunck we look in */
-  max_point_per_chunck = GetMaxPointsPerChunk(chunck_bounds,msize,offset);
-
-#if (LOG_DEBUG > 0)
-  printf("Cell[%d]: max_point_per_chunck = %d\n",cell_idx,max_point_per_chunck);
-#endif
-
-  /* Allocate an array to store the indices of the points that are inside the sphere */
-  in_sphere_idx = (int*)malloc( (max_point_per_chunck)*sizeof(int) ); 
-  /* Search which points are in the sphere and fill the array containing their indices */
-  PointsSearch_NeighbourCells_Sphere(chunck_bounds,msize,offset,p_coords,centre,r2,plist,in_sphere_idx,&point_count);
-
-#if (LOG_DEBUG > 0)
-  printf("Number of points in the sphere: %d\n",point_count);
-#endif
-
-  /* Allocate the array containing the coords of the points inside the sphere */
-  data = (double*)malloc( (3*point_count)*sizeof(double) );
-  for (nps=0; nps<point_count; nps++) {
-    int pidx;
-    /* unsorted point index (original list) */
-    pidx = plist[ in_sphere_idx[ nps ] ].point_index;
-    /* fill the data array on which we will compute the covariance matrix */
-    for (d=0; d<NSD_3D; d++) {
-      data[3*nps + d] = p_coords[3*pidx + d];
-    }
-#if (LOG_DEBUG > 0)
-  printf("datapoint[%d]:  point[%d]: coords = [%f, %f, %f]\n",nps,in_sphere_idx[ nps ],data[3*nps + 0],data[3*nps + 1],data[3*nps + 2]);
-#endif
-  }
-  /* Free the array containing the indices, we don't need it anymore */
-  free(in_sphere_idx);
-
-  /* compute the covariance matrix of this set of points */
-  compute_covariance_matrix_3d(point_count,data,cov_matrix);
-  /* typecast it for the eigen computation */
-  for (i=0; i<NSD_3D; i++) {
-    for (j=0; j<NSD_3D; j++) {
-      A[i][j] = (double complex)cov_matrix[i][j];
-    }
-  }
-
-  /* compute the eigen vectors and eigen values of the covariance matrix */
-  ierr = zheevj3(A, Q, w);
-
-  /* Determine index of the sorted eigen values in ascending order such that
-      w[idx[0]] <= w[idx[1]] <= w[idx[2]]
-  */
-  sort_ascendant(w,idx);
-  /* Sort eigen values and vectors */
-  for (i=0; i<NSD_3D; i++) {
-    eig_val[i] = w[idx[i]];
-    for (j=0; j<NSD_3D; j++) {
-      eig_vec[i][j] = (double)Q[idx[i]][j];
-    }
-  }
-  free(data);
-}
-#endif
 
 static void ComputePointsetEigv(
   int cell_idx, 
@@ -391,14 +351,19 @@ static void ComputePointsetEigv(
   free(data);
 }
 
-static void ComputeCovEigVectors(float radius, 
-                                 long int npoints, 
-                                 int msize[], 
-                                 int offset[],
-                                 double p_coords[], 
-                                 Points *plist, 
-                                 int patch_extent,
-                                 double e_vectors[])
+void compute_covariance_eigenvectors_sphere(
+  float radius, 
+  long int npoints, 
+  int ncells,
+  int p_cellidx[], 
+  int pcell_list[],
+  int msize[], 
+  int offset[],
+  double p_coords[], 
+  Points *plist, 
+  int patch_extent,
+  double e_vectors[]
+)
 {
   int    i,j,p,d,cnt;
   double r2;
@@ -407,6 +372,7 @@ static void ComputeCovEigVectors(float radius,
     printf("patch_extent < 0 is not possible, the search must be at least in the current cell\n");
     exit(1);
   }
+  CreatePoint2CellConnectivity(npoints,ncells,p_coords,p_cellidx,pcell_list,plist);
 
   r2 = radius*radius;
 
@@ -438,69 +404,4 @@ static void ComputeCovEigVectors(float radius,
       }
     }
   }
-}
-
-static void CreatePoint2CellConnectivity(long int npoints, int ncells, double p_coords[], int p_cellidx[], int pcell_list[], Points *plist)
-{
-  int p,c,count,tmp;
-
-  for (p=0; p<npoints; p++) {
-    plist[p].point_index     = p;
-    plist[p].cell_index      = p_cellidx[p]; 
-  }
-
-  /* Sort the points in cell index ascending order */
-  sort_Points(npoints,plist);
-
-  /* sum points per cell */
-  memset( pcell_list, 0, (ncells+1)*sizeof(int) ); // Initialize to 0
-  for (p=0; p<npoints; p++) {
-    pcell_list[ plist[p].cell_index ]++;
-
-#if (LOG_DEBUG > 0)
-    printf("plist[%d]: cell_index = %d, point_index = %d, coords = [%f, %f, %f]\n",p,plist[p].cell_index,plist[p].point_index,p_coords[3*p],p_coords[3*p+1],p_coords[3*p+2]);
-#endif
-  }
-
-  /* 
-  Create offset list 
-  This list contains the sum of the points from cell index 0 to cell index c
-  */
-  count = 0;
-  for (c=0; c<ncells; c++) {
-    tmp = pcell_list[c];
-    pcell_list[c] = count;
-    count += tmp;
-  }
-  pcell_list[c] = count;
-
-#if (LOG_DEBUG > 0)
-  printf("****** offset list ******\n");
-  for (c=0; c<ncells; c++) {
-    printf("cell[%d]: offset = %d, points in cell = %d\n",c,pcell_list[c],pcell_list[c+1]-pcell_list[c]);
-  }
-#endif
-}
-
-void sphere_cov_eig_vectors(long int npoints, 
-                            int ncells, 
-                            int msize[], 
-                            double p_coords[], 
-                            int p_cellidx[], 
-                            float radius, 
-                            double e_vectors[])
-{
-  Points *plist;
-  int    *pcell_list;
-
-  pcell_list = (int*)malloc( (ncells+1)*sizeof(int) );
-  /* Allocate the data structure that will contain the points information */
-  plist      = (Points*)malloc( (npoints)*sizeof(Points) );
-
-  CreatePoint2CellConnectivity(npoints,ncells,p_coords,p_cellidx,pcell_list,plist);
-
-  ComputeCovEigVectors(radius,npoints,msize,pcell_list,p_coords,plist,1,e_vectors);
-
-  free(plist);
-  free(pcell_list);
 }
