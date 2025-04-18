@@ -33,8 +33,8 @@ To generate the medial axis we will use the following YAML file:
     field_name: "xi"
 
   medial_axis:
-    radius_ma: 1e6
-    get_eigv_cov: false
+    radius_ma: 1e4
+    pca_method: "sphere"
     radius_cov: 25000.0
 
 Using this YAML file, we can directly obtain the extruded mesh, the contour and the medial axis in the output folder using

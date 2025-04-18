@@ -39,7 +39,7 @@ extension = Extension(
 
 setup(
     name='geoteqpy',
-    version='1.0.0',
+    version='1.1.2',
     ext_modules=[extension],
     packages=find_packages(),
     include_package_data=True,

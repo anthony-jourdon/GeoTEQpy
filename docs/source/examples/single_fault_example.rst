@@ -176,7 +176,7 @@ To compute the medial axis of the fault, we first define a YAML file with the fo
 
     contour_file: "Faults_output/single_fault-cellfields-contour.vtk"
     medial_axis:
-      radius_ma: 1.0e6
+      radius_ma: 1.0e4
       get_eigv_cov: true
       radius_cov: 25000.0
 
@@ -222,8 +222,8 @@ If you used the same naming convention as in the example, the file should be nam
         field_name: "xi"
 
       medial_axis:
-        radius_ma: 1.0e6
-        get_eigv_cov: true
+        radius_ma: 1.0e4
+        pca_method: "sphere"
         radius_cov: 25000.0
 
   Then, the medial axis can be computed by running:
