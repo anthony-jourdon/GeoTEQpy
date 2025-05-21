@@ -64,7 +64,7 @@ rst_prolog = """
 .. _ASAGI: https://github.com/TUM-I5/ASAGI
 .. _SeisSol: https://seissol.org/
 .. |paper-title| replace:: *"3D reconstruction of complex fault systems from volumetric geodynamic shear zones using medial axis transform"*
-.. _repository: https://
+.. _repository: https://doi.org/10.5281/zenodo.15242136
 """
 
 # -- Options for HTML output -------------------------------------------------
