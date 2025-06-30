@@ -69,3 +69,17 @@ sphinx-build -M html docs/source/ docs/build/
 ```
 However, this requires the Python package [sphinx](https://www.sphinx-doc.org/en/master/index.html).
 An online documentation is available at this [link](https://geoteqpy.readthedocs.io/en/latest/).
+
+## Citation
+If you use this package, please cite it as:
+```
+@article{Jourdon2025,
+  author = {Jourdon, Anthony and May, Dave A. and Hayek, Jorge Nicolas and Gabriel, Alice-Agnes},
+  journal = {Geochemistry, Geophysics, Geosystems},
+  title = {3{D} reconstruction of complex fault system from volumetric geodynamic shear zones using medial axis transform},
+  volume = {26},
+  number = {e2025GC012169},
+  doi = {https://doi.org/10.1029/2025GC012169},
+  year = {2025}
+}
+```
