@@ -5,6 +5,8 @@ import pyviztools as pvt
 import argparse
 import yaml
 
+from mesh_extrude import extrusion
+
 def compute_sliprate(fault_mesh:pvs.PolyData,fe_mesh:pvt.FEMeshQ1,velocity:np.ndarray,dx:float):
   # shift fault mesh by dx in its normal direction
   f_plus  = fault_mesh.points + dx * fault_mesh.point_data['Normals']
@@ -23,9 +25,7 @@ def compute_sliprate(fault_mesh:pvs.PolyData,fe_mesh:pvt.FEMeshQ1,velocity:np.nd
   fault_mesh.point_data['sliprate'] = sliprate
   return
 
-def process_faults(model_fname:str,fault_dir:str,faults:list[str],dx:float,velocity_key:str):
-  # Load the mesh
-  ptatin:pvs.StructuredGrid = pvs.read(model_fname)
+def process_faults(ptatin:pvs.StructuredGrid,fault_dir:str,faults:list[str],dx:float,velocity_key:str):
   # create Q1 FE mesh
   mesh = pvt.CFEMeshQ1(3,ptatin.dimensions[0]-1,ptatin.dimensions[1]-1,ptatin.dimensions[2]-1)
   # create the element to vertex connectivity
@@ -66,12 +66,26 @@ def main():
     serr = f'model_fname not found in the provided configuration file: {args.file}\n'
     serr += 'Use -h option to see the help message.\n'
     raise ValueError(serr)
+  
+  if config.get('extrusion', None) is not None:
+    print("Extruding mesh...")
+    mesh_input = pvs.read(config['model_fname'])
+    # extrude mesh
+    mesh = extrusion(
+      mesh_input,
+      config['extrusion'],
+      fields=config.get('fields',None),
+      e2_key=config.get('e2_key',None)
+    )
+  else:
+    # Load the mesh
+    mesh = pvs.read(config['model_fname'])
 
   process_faults(
-    config['model_fname'],
+    mesh,
     config['fault_dir'],
     config['faults_fname'],
-    config['dx'],
+    float(config['dx']),
     config.get('velocity_key','velocity')
   )
   return
