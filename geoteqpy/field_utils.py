@@ -42,7 +42,7 @@ def fill_nan_j(field:np.ndarray,size:np.ndarray) -> np.ndarray:
   # get the indices of the nan values in a flatten array
   nan_indices = np.argwhere(mask).ravel()
   # reshape mask to 3d
-  mask_3d = np.reshape(mask,newshape=(size[2],size[1],size[0]))
+  mask_3d = np.reshape(mask,(size[2],size[1],size[0]))
   # create a 2d array to hold indices of the non nan values along y axis 
   idx = np.zeros(shape=(mask_3d[:,0,:].shape), dtype=np.int32)
   # search for the indices of the non nan values along y axis
@@ -53,8 +53,8 @@ def fill_nan_j(field:np.ndarray,size:np.ndarray) -> np.ndarray:
   
   # flatten the array of non nan indices
   top_idx = np.ravel(idx)
-
-  fcopy[nan_indices] = fcopy[top_idx]
+  # fill nan values with the nearest top non nan value
+  fcopy[nan_indices] = fcopy[top_idx[0:len(nan_indices)]]
 
   return fcopy
 
